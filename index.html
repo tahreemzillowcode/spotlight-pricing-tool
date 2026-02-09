@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotlight Pricing Tool</title>
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+
+/* ===== AUTH GATE ===== */
+.auth-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+.auth-card {
+  background: #16213e;
+  border: 1px solid #c9a84c33;
+  border-radius: 12px;
+  padding: 48px 40px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+.auth-card h1 {
+  font-size: 24px;
+  color: #c9a84c;
+  margin-bottom: 8px;
+}
+.auth-card p {
+  color: #999;
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+.auth-card label {
+  display: block;
+  text-align: left;
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+.auth-card input, .auth-card select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #0f1729;
+  color: #e0e0e0;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.auth-card select { cursor: pointer; }
+.auth-card input:focus, .auth-card select:focus {
+  outline: none;
+  border-color: #c9a84c;
+}
+.auth-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #c9a84c, #b8963e);
+  color: #1a1a2e;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+.auth-btn:hover { opacity: 0.9; }
+.auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== APP LAYOUT ===== */
+.app { display: none; }
+.app.visible { display: block; }
+
+header {
+  background: #16213e;
+  border-bottom: 2px solid #c9a84c;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+header h1 {
+  font-size: 20px;
+  color: #c9a84c;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+.header-right .user-info {
+  color: #aaa;
+}
+.header-right .user-info strong {
+  color: #c9a84c;
+}
+.role-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.role-badge.manager { background: #c9a84c22; color: #c9a84c; border: 1px solid #c9a84c55; }
+.role-badge.admin { background: #a855f722; color: #c084fc; border: 1px solid #a855f755; }
+.role-badge.sales { background: #3b82f622; color: #60a5fa; border: 1px solid #3b82f655; }
+.sign-out-btn {
+  background: none;
+  border: 1px solid #555;
+  color: #aaa;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.sign-out-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+
+/* ===== TABS ===== */
+.tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 32px;
+  background: #16213e;
+}
+.tab-btn {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #888;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn:hover { color: #ccc; }
+.tab-btn.active { color: #c9a84c; border-bottom-color: #c9a84c; }
+
+/* ===== MAIN CONTENT ===== */
+main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ===== CALCULATOR ===== */
+.calc-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.control-group label {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.control-group select, .control-group input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #0f1729;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+.control-group select:focus, .control-group input:focus {
+  outline: none;
+  border-color: #c9a84c;
+}
+
+/* ===== RESULTS CARDS ===== */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.result-card {
+  background: #16213e;
+  border: 1px solid #c9a84c22;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+.result-card .label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.result-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #c9a84c;
+}
+.result-card .sub {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* ===== RATECARD TABLE ===== */
+.table-section h2 {
+  font-size: 16px;
+  color: #c9a84c;
+  margin-bottom: 16px;
+}
+.ratecard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ratecard-table th {
+  background: #0f1729;
+  color: #c9a84c;
+  padding: 10px 14px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid #c9a84c33;
+}
+.ratecard-table th:first-child { text-align: left; }
+.ratecard-table td {
+  padding: 10px 14px;
+  text-align: right;
+  border-bottom: 1px solid #ffffff0a;
+  color: #ccc;
+}
+.ratecard-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+.ratecard-table tr:hover td { background: #c9a84c08; }
+.ratecard-table tr.highlighted td {
+  background: #c9a84c15;
+  color: #c9a84c;
+  font-weight: 600;
+}
+.ratecard-table .locked-cell {
+  color: #555;
+  font-style: italic;
+  position: relative;
+}
+.lock-icon { font-size: 10px; margin-right: 2px; }
+
+/* ===== REQUEST FORM ===== */
+.request-section {
+  max-width: 640px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.form-grid .full-width { grid-column: 1 / -1; }
+.form-group label {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #0f1729;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-family: inherit;
+}
+.form-group textarea { resize: vertical; min-height: 80px; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none;
+  border-color: #c9a84c;
+}
+
+.deal-summary {
+  background: #0f1729;
+  border: 1px solid #c9a84c33;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+.deal-summary h3 {
+  color: #c9a84c;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.deal-summary .deal-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.deal-summary .deal-row .dl { color: #888; }
+.deal-summary .deal-row .dv { color: #e0e0e0; font-weight: 500; }
+.deal-summary .deal-total {
+  border-top: 1px solid #c9a84c33;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.deal-summary .deal-total .dv { color: #c9a84c; font-size: 16px; }
+
+.btn-group { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.85; }
+.btn-gold { background: linear-gradient(135deg, #c9a84c, #b8963e); color: #1a1a2e; }
+.btn-green { background: #22c55e; color: #fff; }
+.btn-red { background: #ef4444; color: #fff; }
+.btn-blue { background: #3b82f6; color: #fff; }
+.btn-outline {
+  background: none;
+  border: 1px solid #555;
+  color: #ccc;
+}
+
+/* ===== MANAGER SECTION ===== */
+.manager-review {
+  background: #16213e;
+  border: 1px solid #c9a84c33;
+  border-radius: 10px;
+  padding: 24px;
+  margin-top: 24px;
+}
+.manager-review h3 {
+  color: #c9a84c;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+
+/* ===== ADMIN DASHBOARD ===== */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  background: #16213e;
+  border: 1px solid #c9a84c22;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+}
+.stat-card .stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #c9a84c;
+}
+.stat-card .stat-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 6px;
+}
+.admin-section {
+  background: #16213e;
+  border: 1px solid #c9a84c22;
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.admin-section h3 {
+  color: #c9a84c;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.admin-table th {
+  background: #0f1729;
+  color: #c9a84c;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid #c9a84c33;
+}
+.admin-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ffffff0a;
+  color: #ccc;
+}
+.admin-table tr:hover td { background: #c9a84c08; }
+.status-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.status-pill.approved { background: #22c55e22; color: #4ade80; }
+.status-pill.declined { background: #ef444422; color: #f87171; }
+.status-pill.pending { background: #eab30822; color: #fbbf24; }
+.admin-log-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.admin-log-form .form-group { margin-bottom: 0; }
+.admin-log-form .form-group input,
+.admin-log-form .form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #0f1729;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+.admin-log-form .form-group label {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+.month-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.month-filter label {
+  font-size: 12px;
+  color: #999;
+  text-transform: uppercase;
+}
+.month-filter select {
+  padding: 8px 12px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #0f1729;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+.month-filter select:focus { outline: none; border-color: #c9a84c; }
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #555;
+  font-size: 14px;
+}
+.delete-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.delete-btn:hover { color: #ef4444; background: #ef444415; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  header { padding: 12px 16px; }
+  main { padding: 16px; }
+  .calc-controls { grid-template-columns: 1fr; }
+  .results-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .tabs { padding: 0 16px; }
+  .ratecard-table { font-size: 12px; }
+  .ratecard-table th, .ratecard-table td { padding: 8px 6px; }
+}
+@media (max-width: 480px) {
+  .results-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== AUTH GATE ===== -->
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <h1>Spotlight Pricing Tool</h1>
+    <p>Sign in to access ratecard pricing and request approvals</p>
+    <label for="authWho">Select Your Name</label>
+    <select id="authWho">
+      <option value="">-- Choose --</option>
+    </select>
+    <div id="managerPasscode" style="display:none;">
+      <label for="authPasscode">Manager Passcode</label>
+      <input type="password" id="authPasscode" placeholder="Enter manager passcode">
+    </div>
+    <button class="auth-btn" id="authSubmit" disabled>Sign In</button>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div class="app" id="app">
+
+  <header>
+    <h1>Spotlight Pricing Tool</h1>
+    <div class="header-right">
+      <span class="user-info">
+        <strong id="dispName"></strong>
+        <span class="role-badge" id="dispRole"></span>
+      </span>
+      <button class="sign-out-btn" onclick="signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="pricing" onclick="switchTab('pricing')">View Pricing</button>
+    <button class="tab-btn" data-tab="request" onclick="switchTab('request')">Request Approval</button>
+    <button class="tab-btn" data-tab="admin" id="adminTabBtn" onclick="switchTab('admin')" style="display:none;">Admin Dashboard</button>
+  </div>
+
+  <main>
+
+    <!-- ===== TAB 1: PRICING ===== -->
+    <div class="tab-content active" id="tab-pricing">
+
+      <div class="calc-controls">
+        <div class="control-group">
+          <label>Product Type</label>
+          <select id="calcProduct" onchange="updateCalculator()">
+            <option value="addon">Add-On Spotlight</option>
+            <option value="standalone">Standalone Spotlight</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Term Length</label>
+          <select id="calcTerm" onchange="updateCalculator()"></select>
+        </div>
+        <div class="control-group">
+          <label>Number of Placements</label>
+          <select id="calcPlacements" onchange="updateCalculator()"></select>
+        </div>
+      </div>
+
+      <div class="results-grid" id="resultsGrid">
+        <div class="result-card">
+          <div class="label">Price / Placement</div>
+          <div class="value" id="resPrice">--</div>
+          <div class="sub">per month</div>
+        </div>
+        <div class="result-card">
+          <div class="label">Total Monthly Cost</div>
+          <div class="value" id="resTotal">--</div>
+          <div class="sub" id="resTotalSub"></div>
+        </div>
+        <div class="result-card">
+          <div class="label">Volume Discount</div>
+          <div class="value" id="resDiscount">--</div>
+          <div class="sub">off list price</div>
+        </div>
+      </div>
+
+      <div class="table-section">
+        <h2 id="tableTitle">Full Ratecard</h2>
+        <div style="overflow-x:auto;">
+          <table class="ratecard-table" id="ratecardTable"></table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== TAB 2: REQUEST APPROVAL ===== -->
+    <div class="tab-content" id="tab-request">
+
+      <div class="request-section">
+        <h2 style="color:#c9a84c; margin-bottom:20px;">Request Pricing Approval</h2>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Client Name</label>
+            <input type="text" id="reqClient" placeholder="e.g. Acme Realty">
+          </div>
+          <div class="form-group">
+            <label>Salesforce Account Link</label>
+            <input type="url" id="reqSfLink" placeholder="https://zillow.lightning.force.com/...">
+          </div>
+          <div class="form-group">
+            <label>Approver (auto-routed)</label>
+            <input type="email" id="reqManager" readonly style="opacity:0.7;cursor:not-allowed;">
+          </div>
+          <div class="form-group">
+            <label>Product</label>
+            <select id="reqProduct" onchange="updateRequestSummary()">
+              <option value="addon">Add-On Spotlight</option>
+              <option value="standalone">Standalone Spotlight</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Term Length</label>
+            <select id="reqTerm" onchange="updateRequestSummary()"></select>
+          </div>
+          <div class="form-group">
+            <label>Number of Placements</label>
+            <select id="reqPlacements" onchange="updateRequestSummary()"></select>
+          </div>
+          <div class="form-group">
+            <label>Requested Price / Placement (optional)</label>
+            <input type="number" id="reqCustomPrice" placeholder="Leave blank for ratecard price" oninput="updateRequestSummary()">
+          </div>
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <textarea id="reqNotes" placeholder="Any additional context for the approval request..."></textarea>
+          </div>
+        </div>
+
+        <div class="deal-summary" id="dealSummary">
+          <h3>Deal Summary</h3>
+          <div id="dealRows"></div>
+        </div>
+
+        <div class="btn-group">
+          <a class="btn btn-gold" id="requestMailto" href="#">Request Pricing Approval</a>
+        </div>
+
+        <!-- Manager Approval Section -->
+        <div class="manager-review" id="managerReview" style="display:none;">
+          <h3>Manager Actions</h3>
+          <p style="color:#888; font-size:13px; margin-bottom:16px;">Review the deal above and respond to the sales rep:</p>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label>Sales Rep Email (reply to)</label>
+            <input type="email" id="mgrReplyTo" placeholder="salesrep@zillowgroup.com">
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label>Notes / Reason (optional)</label>
+            <textarea id="mgrNotes" placeholder="Add any notes..."></textarea>
+          </div>
+          <div class="btn-group">
+            <a class="btn btn-green" id="approveMailto" href="#">Approve</a>
+            <a class="btn btn-red" id="declineMailto" href="#">Decline</a>
+            <a class="btn btn-blue" id="infoMailto" href="#">Request More Info</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== TAB 3: ADMIN DASHBOARD ===== -->
+    <div class="tab-content" id="tab-admin">
+
+      <h2 style="color:#c9a84c; margin-bottom:20px;">Exception Request Dashboard</h2>
+
+      <div class="month-filter">
+        <label>Filter by month:</label>
+        <select id="adminMonthFilter" onchange="renderAdminDashboard()">
+          <option value="all">All Time</option>
+        </select>
+      </div>
+
+      <div class="admin-stats" id="adminStats">
+        <div class="stat-card">
+          <div class="stat-value" id="statRequested">0</div>
+          <div class="stat-label">Requests This Period</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statApproved">0</div>
+          <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statDeclined">0</div>
+          <div class="stat-label">Declined</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statPending">0</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statDiscountTotal">$0</div>
+          <div class="stat-label">Total $ in Approved Discounts</div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Log Exception Request</h3>
+        <div class="admin-log-form" id="adminLogForm">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="logDate">
+          </div>
+          <div class="form-group">
+            <label>Sales Rep</label>
+            <select id="logRep"></select>
+          </div>
+          <div class="form-group">
+            <label>Client</label>
+            <input type="text" id="logClient" placeholder="Client name">
+          </div>
+          <div class="form-group">
+            <label>Product</label>
+            <select id="logProduct">
+              <option value="addon">Add-On</option>
+              <option value="standalone">Standalone</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Term (mo)</label>
+            <select id="logTerm">
+              <option value="1">1</option>
+              <option value="3">3</option>
+              <option value="6">6</option>
+              <option value="9">9</option>
+              <option value="12">12</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Placements</label>
+            <input type="number" id="logPlacements" min="1" value="1">
+          </div>
+          <div class="form-group">
+            <label>Ratecard $/placement</label>
+            <input type="number" id="logRatecard" step="0.01" readonly style="opacity:0.7;">
+          </div>
+          <div class="form-group">
+            <label>Requested $/placement</label>
+            <input type="number" id="logRequested" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="logStatus">
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="declined">Declined</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-gold btn-sm" onclick="addLogEntry()" style="width:100%;margin-top:18px;">Add Entry</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Exception Request Log</h3>
+        <div style="overflow-x:auto;">
+          <table class="admin-table" id="adminLogTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Rep</th>
+                <th>Client</th>
+                <th>Product</th>
+                <th>Term</th>
+                <th>Placements</th>
+                <th>Ratecard $</th>
+                <th>Requested $</th>
+                <th>Discount $</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="adminLogBody"></tbody>
+          </table>
+          <div class="empty-state" id="adminEmpty">No exception requests logged yet.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+// =============================================
+// CONFIGURABLE SETTINGS
+// =============================================
+const PM_EMAIL = 'tahreemz@zillowgroup.com';
+const SALES_DIRECTOR_EMAIL = 'kenh@zillowgroup.com';
+const MANAGER_PASSCODE = 'spotlight2024';
+
+// =============================================
+// TEAM ROSTER
+// =============================================
+const ADMIN_EMAILS = ['tahreemz@zillowgroup.com', 'kenh@zillowgroup.com'];
+
+const TEAM = [
+  // Admins (PM + Sales Director — full access including admin dashboard)
+  { name: 'Tahreem Zahid',      email: 'tahreemz@zillowgroup.com',   role: 'admin', manager: null },
+  { name: 'Ken Hoffman',        email: 'kenh@zillowgroup.com',       role: 'admin', manager: null },
+  // Managers
+  { name: 'Ryan Dansie',        email: 'ryandan@zillowgroup.com',     role: 'manager', manager: null },
+  // Ryan Dansie's direct reports
+  { name: 'Alex Sanchez',       email: 'alexsanc@zillowgroup.com',   role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Bria Randolph',      email: 'briar@zillowgroup.com',      role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Caela Abadie',       email: 'caelaa@zillowgroup.com',     role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Kayla Phillips',     email: 'kaylaph@zillowgroup.com',    role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Khal Haikal',        email: 'khalh@zillowgroup.com',      role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Macy Lu',            email: 'macyl@zillowgroup.com',      role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Malik Dukes',        email: 'malikd@zillowgroup.com',     role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Sam Stein',          email: 'samst@zillowgroup.com',      role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Shadi Alramli',      email: 'shadia@zillowgroup.com',     role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Tanner Leon',        email: 'tannerl@zillowgroup.com',    role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  { name: 'Tyler Paul Gilmore', email: 'tylerpaulg@zillowgroup.com', role: 'sales', manager: 'ryandan@zillowgroup.com' }
+];
+
+// =============================================
+// RATECARD DATA
+// =============================================
+const TERM_MULTIPLIERS = {
+  1:  1.20,
+  3:  1.10,
+  6:  1.05,
+  9:  1.025,
+  12: 1.00
+};
+
+// Labels with premium % — only managers see the % on short terms
+const TERM_LABELS_FULL = {
+  1:  '1 mo (+20%)',
+  3:  '3 mo (+10%)',
+  6:  '6 mo (+5%)',
+  9:  '9 mo (+2.5%)',
+  12: '12 mo (base)'
+};
+
+// Labels without premium % — what sales reps see for short terms
+const TERM_LABELS_SHORT = {
+  1:  '1 mo',
+  3:  '3 mo',
+  6:  '6 mo (+5%)',
+  9:  '9 mo (+2.5%)',
+  12: '12 mo (base)'
+};
+
+function isPrivileged() {
+  return currentUser.role === 'manager' || currentUser.role === 'admin';
+}
+
+function getTermLabel(t) {
+  if (isPrivileged()) return TERM_LABELS_FULL[t];
+  return TERM_LABELS_SHORT[t];
+}
+
+const PRODUCTS = {
+  addon: {
+    name: 'Add-On Spotlight',
+    tiers: [
+      { placements: 1,   price12mo: 221.85, discount: 0  },
+      { placements: 2,   price12mo: 195.45, discount: 12 },
+      { placements: 10,  price12mo: 186.35, discount: 16 },
+      { placements: 20,  price12mo: 177.48, discount: 20 },
+      { placements: 50,  price12mo: 169.72, discount: 24 },
+      { placements: 100, price12mo: 165.00, discount: 26 },
+      { placements: 150, price12mo: 155.29, discount: 30 }
+    ]
+  },
+  standalone: {
+    name: 'Standalone Spotlight',
+    tiers: [
+      { placements: 1,  price12mo: 261.00, discount: 0  },
+      { placements: 2,  price12mo: 230.00, discount: 12 },
+      { placements: 10, price12mo: 219.24, discount: 16 },
+      { placements: 20, price12mo: 208.80, discount: 20 }
+    ]
+  }
+};
+
+// Terms visible to sales reps in the pricing calculator (6mo+). Managers see all.
+const SALES_TERMS = [6, 9, 12];
+const ALL_TERMS = [1, 3, 6, 9, 12];
+
+// =============================================
+// STATE
+// =============================================
+let currentUser = { name: '', email: '', role: 'sales', manager: null };
+
+// =============================================
+// AUTH
+// =============================================
+const authWho = document.getElementById('authWho');
+const authPasscode = document.getElementById('authPasscode');
+const authSubmit = document.getElementById('authSubmit');
+const managerPasscodeDiv = document.getElementById('managerPasscode');
+
+// Populate the sign-in dropdown
+(function buildAuthDropdown() {
+  const admins = TEAM.filter(t => t.role === 'admin');
+  const managers = TEAM.filter(t => t.role === 'manager');
+  const sales = TEAM.filter(t => t.role === 'sales').sort((a, b) => a.name.localeCompare(b.name));
+
+  [
+    { label: 'Admin', list: admins },
+    { label: 'Managers', list: managers },
+    { label: 'Sales Representatives', list: sales }
+  ].forEach(({ label, list }) => {
+    if (!list.length) return;
+    const grp = document.createElement('optgroup');
+    grp.label = label;
+    list.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.email;
+      o.textContent = p.name;
+      grp.appendChild(o);
+    });
+    authWho.appendChild(grp);
+  });
+})();
+
+function getSelectedPerson() {
+  return TEAM.find(t => t.email === authWho.value) || null;
+}
+
+function validateAuth() {
+  const person = getSelectedPerson();
+  if (!person) { authSubmit.disabled = true; return; }
+  const needsPasscode = person.role === 'manager' || person.role === 'admin';
+  managerPasscodeDiv.style.display = needsPasscode ? 'block' : 'none';
+  authSubmit.disabled = needsPasscode && authPasscode.value.length === 0;
+}
+
+authWho.addEventListener('change', validateAuth);
+authPasscode.addEventListener('input', validateAuth);
+
+authSubmit.addEventListener('click', () => {
+  const person = getSelectedPerson();
+  if (!person) return;
+  const needsPasscode = person.role === 'manager' || person.role === 'admin';
+  if (needsPasscode && authPasscode.value !== MANAGER_PASSCODE) {
+    alert('Invalid passcode.');
+    return;
+  }
+  currentUser = {
+    name: person.name,
+    email: person.email,
+    role: person.role,
+    manager: person.manager
+  };
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('dispName').textContent = currentUser.name;
+  const badge = document.getElementById('dispRole');
+  const roleLabels = { admin: 'Admin', manager: 'Manager', sales: 'Sales' };
+  badge.textContent = roleLabels[person.role];
+  badge.className = 'role-badge ' + person.role;
+
+  // Show manager actions for managers and admins
+  document.getElementById('managerReview').style.display = isPrivileged() ? 'block' : 'none';
+
+  // Show admin tab for admins only
+  document.getElementById('adminTabBtn').style.display = person.role === 'admin' ? 'inline-block' : 'none';
+
+  // Auto-fill manager email in request form
+  if (currentUser.manager) {
+    document.getElementById('reqManager').value = currentUser.manager;
+  }
+
+  initApp();
+});
+
+function signOut() {
+  currentUser = { name: '', email: '', role: 'sales', manager: null };
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('authGate').style.display = 'flex';
+  authWho.value = '';
+  authPasscode.value = '';
+  managerPasscodeDiv.style.display = 'none';
+  validateAuth();
+}
+
+// =============================================
+// TABS
+// =============================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+}
+
+// =============================================
+// HELPERS
+// =============================================
+function fmt(n) {
+  return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function getPrice(tier, termMonths) {
+  return +(tier.price12mo * TERM_MULTIPLIERS[termMonths]).toFixed(2);
+}
+
+
+function getAvailableTerms() {
+  return isPrivileged() ? ALL_TERMS : SALES_TERMS;
+}
+
+// =============================================
+// POPULATE DROPDOWNS
+// =============================================
+function populateTermDropdown(selectEl, includeAllTerms) {
+  const terms = includeAllTerms ? ALL_TERMS : getAvailableTerms();
+  selectEl.innerHTML = '';
+  terms.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = getTermLabel(t);
+    selectEl.appendChild(opt);
+  });
+}
+
+function populatePlacementDropdown(selectEl, productKey) {
+  const tiers = PRODUCTS[productKey].tiers;
+  selectEl.innerHTML = '';
+  tiers.forEach(tier => {
+    const opt = document.createElement('option');
+    opt.value = tier.placements;
+    opt.textContent = tier.placements + (tier.placements === 1 ? ' placement' : ' placements');
+    selectEl.appendChild(opt);
+  });
+}
+
+// =============================================
+// CALCULATOR
+// =============================================
+function updateCalculator() {
+  const productKey = document.getElementById('calcProduct').value;
+  const termMonths = parseInt(document.getElementById('calcTerm').value);
+  const product = PRODUCTS[productKey];
+
+  // Update placements dropdown if product changed
+  const calcPl = document.getElementById('calcPlacements');
+  const currentTiers = product.tiers.map(t => t.placements);
+  const optValues = Array.from(calcPl.options).map(o => parseInt(o.value));
+  if (JSON.stringify(currentTiers) !== JSON.stringify(optValues)) {
+    populatePlacementDropdown(calcPl, productKey);
+  }
+
+  // Find tier
+  const selPlacements = parseInt(document.getElementById('calcPlacements').value);
+  const tier = product.tiers.find(t => t.placements === selPlacements) || product.tiers[0];
+
+  const pricePerPlacement = getPrice(tier, termMonths);
+  const totalMonthly = pricePerPlacement * tier.placements;
+  const totalTerm = totalMonthly * termMonths;
+
+  document.getElementById('resPrice').textContent = fmt(pricePerPlacement);
+  document.getElementById('resTotal').textContent = fmt(totalMonthly);
+  document.getElementById('resTotalSub').textContent = fmt(totalTerm) + ' total (' + termMonths + ' mo)';
+  document.getElementById('resDiscount').textContent = tier.discount + '%';
+
+  buildRatecardTable(productKey, termMonths, tier.placements);
+}
+
+function buildRatecardTable(productKey, selectedTerm, selectedPlacements) {
+  const product = PRODUCTS[productKey];
+  // Sales reps only see 6mo+ columns in the table; managers/admins see all
+  const terms = isPrivileged() ? ALL_TERMS : SALES_TERMS;
+
+  document.getElementById('tableTitle').textContent = product.name + ' — Full Ratecard';
+
+  let html = '<thead><tr><th>Placements</th>';
+  terms.forEach(t => {
+    html += '<th>' + getTermLabel(t) + '</th>';
+  });
+  html += '<th>Discount</th></tr></thead><tbody>';
+
+  product.tiers.forEach(tier => {
+    const isHighlighted = tier.placements === selectedPlacements;
+    html += '<tr class="' + (isHighlighted ? 'highlighted' : '') + '">';
+    html += '<td>' + tier.placements + '</td>';
+    terms.forEach(t => {
+      html += '<td>' + fmt(getPrice(tier, t)) + '</td>';
+    });
+    html += '<td>' + tier.discount + '%</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  document.getElementById('ratecardTable').innerHTML = html;
+}
+
+// =============================================
+// REQUEST FORM (exception process — all terms available)
+// =============================================
+function updateRequestSummary() {
+  const productKey = document.getElementById('reqProduct').value;
+  const product = PRODUCTS[productKey];
+
+  // Update placements dropdown
+  const reqPl = document.getElementById('reqPlacements');
+  const currentTiers = product.tiers.map(t => t.placements);
+  const optValues = Array.from(reqPl.options).map(o => parseInt(o.value));
+  if (JSON.stringify(currentTiers) !== JSON.stringify(optValues)) {
+    populatePlacementDropdown(reqPl, productKey);
+  }
+
+  const termMonths = parseInt(document.getElementById('reqTerm').value);
+  const placements = parseInt(document.getElementById('reqPlacements').value);
+  const tier = product.tiers.find(t => t.placements === placements) || product.tiers[0];
+  const ratecardPrice = getPrice(tier, termMonths);
+  const customPrice = parseFloat(document.getElementById('reqCustomPrice').value);
+  const priceUsed = isNaN(customPrice) || customPrice <= 0 ? ratecardPrice : customPrice;
+  const totalMonthly = priceUsed * tier.placements;
+  const totalTerm = totalMonthly * termMonths;
+  const isShortTerm = termMonths < 6;
+
+  let rows = '';
+  rows += dealRow('Product', product.name);
+  rows += dealRow('Term', termMonths + ' months' + (isShortTerm ? ' (requires approval)' : ''));
+  rows += dealRow('Placements', tier.placements);
+  rows += dealRow('Ratecard Price/Placement', fmt(ratecardPrice));
+  if (!isNaN(customPrice) && customPrice > 0 && customPrice !== ratecardPrice) {
+    rows += dealRow('Requested Price/Placement', fmt(customPrice));
+    const diff = ((customPrice - ratecardPrice) / ratecardPrice * 100).toFixed(1);
+    rows += dealRow('vs Ratecard', diff + '%');
+  }
+  rows += '<div class="deal-row deal-total"><span class="dl">Total Monthly</span><span class="dv">' + fmt(totalMonthly) + '</span></div>';
+  rows += '<div class="deal-row"><span class="dl">Total (' + termMonths + ' mo)</span><span class="dv">' + fmt(totalTerm) + '</span></div>';
+
+  document.getElementById('dealRows').innerHTML = rows;
+
+  updateRequestMailto();
+}
+
+function dealRow(label, value) {
+  return '<div class="deal-row"><span class="dl">' + label + '</span><span class="dv">' + value + '</span></div>';
+}
+
+function updateRequestMailto() {
+  const client = document.getElementById('reqClient').value.trim() || '[Client]';
+  const managerEmail = document.getElementById('reqManager').value.trim();
+  const sfLink = document.getElementById('reqSfLink').value.trim();
+  const productKey = document.getElementById('reqProduct').value;
+  const product = PRODUCTS[productKey];
+  const termMonths = parseInt(document.getElementById('reqTerm').value);
+  const placements = parseInt(document.getElementById('reqPlacements').value);
+  const tier = product.tiers.find(t => t.placements === placements) || product.tiers[0];
+  const ratecardPrice = getPrice(tier, termMonths);
+  const customPrice = parseFloat(document.getElementById('reqCustomPrice').value);
+  const priceUsed = isNaN(customPrice) || customPrice <= 0 ? ratecardPrice : customPrice;
+  const notes = document.getElementById('reqNotes').value.trim();
+  const totalMonthly = priceUsed * tier.placements;
+  const totalTerm = totalMonthly * termMonths;
+  const isShortTerm = termMonths < 6;
+
+  const subject = 'Pricing Approval Request: ' + client + ' - ' + product.name + ' - ' + placements + ' placements' + (isShortTerm ? ' (' + termMonths + 'mo exception)' : '');
+
+  let body = 'Hi,\n\n';
+  body += 'I\'d like to request pricing approval for the following deal:\n\n';
+  body += '--- DEAL DETAILS ---\n';
+  body += 'Client: ' + client + '\n';
+  if (sfLink) body += 'Salesforce Account: ' + sfLink + '\n';
+  body += 'Sales Rep: ' + currentUser.name + ' (' + currentUser.email + ')\n';
+  body += 'Product: ' + product.name + '\n';
+  body += 'Term: ' + termMonths + ' months' + (isShortTerm ? ' (SHORT TERM - requires approval)' : '') + '\n';
+  body += 'Placements: ' + placements + '\n';
+  body += 'Ratecard Price/Placement: ' + fmt(ratecardPrice) + '\n';
+  if (!isNaN(customPrice) && customPrice > 0 && customPrice !== ratecardPrice) {
+    body += 'Requested Price/Placement: ' + fmt(customPrice) + '\n';
+    const diff = ((customPrice - ratecardPrice) / ratecardPrice * 100).toFixed(1);
+    body += 'Difference vs Ratecard: ' + diff + '%\n';
+  }
+  body += 'Total Monthly: ' + fmt(totalMonthly) + '\n';
+  body += 'Total (' + termMonths + ' mo): ' + fmt(totalTerm) + '\n';
+  body += 'Volume Discount Tier: ' + tier.discount + '%\n';
+  if (notes) {
+    body += '\nNotes: ' + notes + '\n';
+  }
+  body += '\n--- END ---\n\n';
+  body += 'Please review and approve/decline using the Spotlight Pricing Tool.\n\n';
+  body += 'Thank you,\n' + currentUser.name;
+
+  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join(',');
+  const mailto = 'mailto:' + encodeURIComponent(managerEmail) +
+    '?cc=' + encodeURIComponent(cc) +
+    '&subject=' + encodeURIComponent(subject) +
+    '&body=' + encodeURIComponent(body);
+
+  document.getElementById('requestMailto').href = mailto;
+}
+
+// =============================================
+// MANAGER ACTIONS
+// =============================================
+function updateManagerMailtos() {
+  const replyTo = document.getElementById('mgrReplyTo').value.trim();
+  const mgrNotes = document.getElementById('mgrNotes').value.trim();
+  const client = document.getElementById('reqClient').value.trim() || '[Client]';
+  const productKey = document.getElementById('reqProduct').value;
+  const product = PRODUCTS[productKey];
+  const termMonths = parseInt(document.getElementById('reqTerm').value);
+  const placements = parseInt(document.getElementById('reqPlacements').value);
+  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join(',');
+
+  // Approve
+  const approveSubject = 'APPROVED: Pricing Request - ' + client + ' - ' + product.name + ' - ' + placements + ' placements';
+  let approveBody = 'Hi,\n\nThe following pricing request has been APPROVED.\n\n';
+  approveBody += 'Client: ' + client + '\n';
+  approveBody += 'Product: ' + product.name + '\n';
+  approveBody += 'Term: ' + termMonths + ' months\n';
+  approveBody += 'Placements: ' + placements + '\n';
+  if (mgrNotes) approveBody += '\nManager Notes: ' + mgrNotes + '\n';
+  approveBody += '\nApproved by: ' + currentUser.name + '\n\nThank you.';
+
+  document.getElementById('approveMailto').href = 'mailto:' + encodeURIComponent(replyTo) +
+    '?cc=' + encodeURIComponent(cc) +
+    '&subject=' + encodeURIComponent(approveSubject) +
+    '&body=' + encodeURIComponent(approveBody);
+
+  // Decline
+  const declineSubject = 'DECLINED: Pricing Request - ' + client + ' - ' + product.name + ' - ' + placements + ' placements';
+  let declineBody = 'Hi,\n\nThe following pricing request has been DECLINED.\n\n';
+  declineBody += 'Client: ' + client + '\n';
+  declineBody += 'Product: ' + product.name + '\n';
+  declineBody += 'Term: ' + termMonths + ' months\n';
+  declineBody += 'Placements: ' + placements + '\n';
+  if (mgrNotes) declineBody += '\nReason/Notes: ' + mgrNotes + '\n';
+  declineBody += '\nDeclined by: ' + currentUser.name + '\n\nPlease reach out if you have questions.';
+
+  document.getElementById('declineMailto').href = 'mailto:' + encodeURIComponent(replyTo) +
+    '?cc=' + encodeURIComponent(cc) +
+    '&subject=' + encodeURIComponent(declineSubject) +
+    '&body=' + encodeURIComponent(declineBody);
+
+  // Request More Info
+  const infoSubject = 'More Info Needed: Pricing Request - ' + client;
+  let infoBody = 'Hi,\n\nI need more information regarding the pricing request for ' + client + '.\n\n';
+  if (mgrNotes) infoBody += mgrNotes + '\n\n';
+  infoBody += 'Please update the request and resubmit.\n\nThank you,\n' + currentUser.name;
+
+  document.getElementById('infoMailto').href = 'mailto:' + encodeURIComponent(replyTo) +
+    '?subject=' + encodeURIComponent(infoSubject) +
+    '&body=' + encodeURIComponent(infoBody);
+}
+
+// =============================================
+// INIT
+// =============================================
+function initApp() {
+  // Pricing calculator: sales reps see 6mo+ only; managers see all
+  populateTermDropdown(document.getElementById('calcTerm'), false);
+  populatePlacementDropdown(document.getElementById('calcPlacements'), 'addon');
+
+  // Request form: ALL terms available (1mo, 3mo as exception requests)
+  populateTermDropdown(document.getElementById('reqTerm'), true);
+  populatePlacementDropdown(document.getElementById('reqPlacements'), 'addon');
+
+  updateCalculator();
+  updateRequestSummary();
+
+  // Listen for request form changes
+  ['reqClient', 'reqSfLink', 'reqManager', 'reqProduct', 'reqTerm', 'reqPlacements', 'reqCustomPrice', 'reqNotes'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => { updateRequestSummary(); updateManagerMailtos(); });
+    el.addEventListener('change', () => { updateRequestSummary(); updateManagerMailtos(); });
+  });
+
+  // Listen for manager fields
+  ['mgrReplyTo', 'mgrNotes'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateManagerMailtos);
+  });
+
+  updateManagerMailtos();
+
+  // Init admin dashboard if admin
+  if (currentUser.role === 'admin') {
+    initAdminDashboard();
+  }
+}
+
+// =============================================
+// ADMIN DASHBOARD (localStorage-based)
+// =============================================
+const STORAGE_KEY = 'spotlight_exception_log';
+
+function getExceptionLog() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function saveExceptionLog(log) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(log));
+}
+
+function initAdminDashboard() {
+  // Set default date to today
+  document.getElementById('logDate').value = new Date().toISOString().split('T')[0];
+
+  // Populate sales rep dropdown
+  const logRep = document.getElementById('logRep');
+  logRep.innerHTML = '';
+  TEAM.filter(t => t.role === 'sales').sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.email;
+    o.textContent = p.name;
+    logRep.appendChild(o);
+  });
+
+  // Auto-calc ratecard price when product/term/placements change
+  ['logProduct', 'logTerm', 'logPlacements'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateLogRatecard);
+    document.getElementById(id).addEventListener('input', updateLogRatecard);
+  });
+  updateLogRatecard();
+
+  // Populate month filter
+  populateMonthFilter();
+
+  // Render dashboard
+  renderAdminDashboard();
+}
+
+function updateLogRatecard() {
+  const productKey = document.getElementById('logProduct').value;
+  const termMonths = parseInt(document.getElementById('logTerm').value);
+  const placements = parseInt(document.getElementById('logPlacements').value) || 1;
+  const product = PRODUCTS[productKey];
+  // Find closest tier
+  const tier = product.tiers.slice().reverse().find(t => placements >= t.placements) || product.tiers[0];
+  const price = getPrice(tier, termMonths);
+  document.getElementById('logRatecard').value = price.toFixed(2);
+}
+
+function addLogEntry() {
+  const date = document.getElementById('logDate').value;
+  const rep = document.getElementById('logRep').value;
+  const repName = TEAM.find(t => t.email === rep)?.name || rep;
+  const client = document.getElementById('logClient').value.trim();
+  const product = document.getElementById('logProduct').value;
+  const term = parseInt(document.getElementById('logTerm').value);
+  const placements = parseInt(document.getElementById('logPlacements').value) || 1;
+  const ratecard = parseFloat(document.getElementById('logRatecard').value) || 0;
+  const requested = parseFloat(document.getElementById('logRequested').value) || ratecard;
+  const status = document.getElementById('logStatus').value;
+
+  if (!date || !client) {
+    alert('Please fill in date and client name.');
+    return;
+  }
+
+  const log = getExceptionLog();
+  log.push({
+    id: Date.now(),
+    date, rep, repName, client, product, term, placements,
+    ratecard, requested, status
+  });
+  saveExceptionLog(log);
+
+  // Reset form
+  document.getElementById('logClient').value = '';
+  document.getElementById('logRequested').value = '';
+  document.getElementById('logStatus').value = 'pending';
+
+  populateMonthFilter();
+  renderAdminDashboard();
+}
+
+function deleteLogEntry(id) {
+  const log = getExceptionLog().filter(e => e.id !== id);
+  saveExceptionLog(log);
+  populateMonthFilter();
+  renderAdminDashboard();
+}
+
+function updateLogStatus(id, newStatus) {
+  const log = getExceptionLog();
+  const entry = log.find(e => e.id === id);
+  if (entry) entry.status = newStatus;
+  saveExceptionLog(log);
+  renderAdminDashboard();
+}
+
+function populateMonthFilter() {
+  const log = getExceptionLog();
+  const months = new Set();
+  log.forEach(e => {
+    if (e.date) months.add(e.date.substring(0, 7)); // YYYY-MM
+  });
+
+  const sel = document.getElementById('adminMonthFilter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">All Time</option>';
+  Array.from(months).sort().reverse().forEach(m => {
+    const o = document.createElement('option');
+    o.value = m;
+    const [y, mo] = m.split('-');
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    o.textContent = monthNames[parseInt(mo) - 1] + ' ' + y;
+    sel.appendChild(o);
+  });
+  sel.value = current || 'all';
+}
+
+function renderAdminDashboard() {
+  const log = getExceptionLog();
+  const filter = document.getElementById('adminMonthFilter').value;
+  const filtered = filter === 'all' ? log : log.filter(e => e.date && e.date.startsWith(filter));
+
+  // Stats
+  const requested = filtered.length;
+  const approved = filtered.filter(e => e.status === 'approved').length;
+  const declined = filtered.filter(e => e.status === 'declined').length;
+  const pending = filtered.filter(e => e.status === 'pending').length;
+
+  // Total $ in approved discounts = sum of (ratecard - requested) * placements * term for approved entries
+  let totalDiscount = 0;
+  filtered.filter(e => e.status === 'approved').forEach(e => {
+    const diff = (e.ratecard - e.requested);
+    if (diff > 0) totalDiscount += diff * e.placements * e.term;
+  });
+
+  document.getElementById('statRequested').textContent = requested;
+  document.getElementById('statApproved').textContent = approved;
+  document.getElementById('statDeclined').textContent = declined;
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statDiscountTotal').textContent = fmt(totalDiscount);
+
+  // Table
+  const tbody = document.getElementById('adminLogBody');
+  const empty = document.getElementById('adminEmpty');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  const productNames = { addon: 'Add-On', standalone: 'Standalone' };
+
+  tbody.innerHTML = filtered.sort((a, b) => b.date.localeCompare(a.date)).map(e => {
+    const diff = (e.ratecard - e.requested) * e.placements * e.term;
+    return '<tr>' +
+      '<td>' + e.date + '</td>' +
+      '<td>' + (e.repName || e.rep) + '</td>' +
+      '<td>' + e.client + '</td>' +
+      '<td>' + (productNames[e.product] || e.product) + '</td>' +
+      '<td>' + e.term + ' mo</td>' +
+      '<td>' + e.placements + '</td>' +
+      '<td>' + fmt(e.ratecard) + '</td>' +
+      '<td>' + fmt(e.requested) + '</td>' +
+      '<td>' + (diff > 0 ? fmt(diff) : '--') + '</td>' +
+      '<td><select class="status-select" onchange="updateLogStatus(' + e.id + ', this.value)" style="background:#0f1729;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:4px 8px;font-size:12px;">' +
+        '<option value="pending"' + (e.status === 'pending' ? ' selected' : '') + '>Pending</option>' +
+        '<option value="approved"' + (e.status === 'approved' ? ' selected' : '') + '>Approved</option>' +
+        '<option value="declined"' + (e.status === 'declined' ? ' selected' : '') + '>Declined</option>' +
+      '</select></td>' +
+      '<td><button class="delete-btn" onclick="deleteLogEntry(' + e.id + ')" title="Delete">&#10005;</button></td>' +
+    '</tr>';
+  }).join('');
+}
+</script>
+</body>
+</html>
