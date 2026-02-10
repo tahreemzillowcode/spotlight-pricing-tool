@@ -1221,71 +1221,24 @@ function sendSlackNotification() {
   btn.textContent = 'Sending...';
   statusEl.style.display = 'none';
 
-  // Build Slack message with Block Kit
-  const blocks = [
-    {
-      type: 'header',
-      text: { type: 'plain_text', text: 'New Exception Request' }
-    },
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: '*' + currentUser.name + '* has submitted a pricing exception request.'
-      }
-    },
-    { type: 'divider' },
-    {
-      type: 'section',
-      fields: [
-        { type: 'mrkdwn', text: '*Client:*\n' + client },
-        { type: 'mrkdwn', text: '*Product:*\n' + product.name },
-        { type: 'mrkdwn', text: '*Term:*\n' + termMonths + ' months' + (isShortTerm ? ' (short term)' : '') },
-        { type: 'mrkdwn', text: '*Placements:*\n' + numPlacements },
-        { type: 'mrkdwn', text: '*Ratecard Price/Placement:*\n' + fmt(ratecardPrice) },
-        { type: 'mrkdwn', text: '*Requested Price/Placement:*\n' + fmt(priceUsed) },
-        { type: 'mrkdwn', text: '*Total Monthly:*\n' + fmt(totalMonthly) },
-        { type: 'mrkdwn', text: '*Total (' + termMonths + ' mo):*\n' + fmt(totalTerm) },
-        { type: 'mrkdwn', text: '*Volume Discount Tier:*\n' + tier.discount + '%' }
-      ]
-    }
-  ];
-
-  if (sfLink) {
-    blocks.push({
-      type: 'section',
-      text: { type: 'mrkdwn', text: '*Salesforce Account:* <' + sfLink + '|View in Salesforce>' }
-    });
-  }
-
-  if (notes) {
-    blocks.push({
-      type: 'section',
-      text: { type: 'mrkdwn', text: '*Business Case:*\n' + notes }
-    });
-  }
-
-  blocks.push({ type: 'divider' });
-  blocks.push({
-    type: 'actions',
-    elements: [
-      {
-        type: 'button',
-        text: { type: 'plain_text', text: 'Review in Pricing Tool' },
-        url: TOOL_URL,
-        style: 'primary'
-      }
-    ]
+  // Build simple query params — Apps Script builds the Slack message
+  const params = new URLSearchParams({
+    rep: currentUser.name,
+    client: client,
+    product: product.name,
+    term: termMonths,
+    placements: numPlacements,
+    ratecard: fmt(ratecardPrice),
+    requested: fmt(priceUsed),
+    monthly: fmt(totalMonthly),
+    total: fmt(totalTerm),
+    discount: tier.discount,
+    sflink: sfLink || '',
+    notes: notes || '',
+    toolurl: TOOL_URL
   });
 
-  const payload = {
-    text: 'New Exception Request from ' + currentUser.name + ' for ' + client,
-    blocks: blocks
-  };
-
-  var url = SLACK_WEBHOOK_URL + '?data=' + encodeURIComponent(JSON.stringify(payload));
-
-  fetch(url)
+  fetch(SLACK_WEBHOOK_URL + '?' + params.toString())
   .then(res => res.json())
   .then(data => {
     statusEl.style.display = 'block';
