@@ -1047,6 +1047,14 @@ function getPrice(tier, termMonths) {
   return +(tier.price12mo * TERM_MULTIPLIERS[termMonths]).toFixed(2);
 }
 
+function getTierRangeLabel(tiers, index) {
+  const tier = tiers[index];
+  const next = tiers[index + 1];
+  if (tier.placements === 1) return '1';
+  if (!next) return tier.placements + '+';
+  return tier.placements + '-' + (next.placements - 1);
+}
+
 
 function getAvailableTerms() {
   return isPrivileged() ? ALL_TERMS : SALES_TERMS;
@@ -1069,10 +1077,11 @@ function populateTermDropdown(selectEl, includeAllTerms, usePlainLabels) {
 function populatePlacementDropdown(selectEl, productKey) {
   const tiers = PRODUCTS[productKey].tiers;
   selectEl.innerHTML = '';
-  tiers.forEach(tier => {
+  tiers.forEach((tier, i) => {
     const opt = document.createElement('option');
     opt.value = tier.placements;
-    opt.textContent = tier.placements + (tier.placements === 1 ? ' placement' : ' placements');
+    const range = getTierRangeLabel(tiers, i);
+    opt.textContent = range + (tier.placements === 1 ? ' placement' : ' placements');
     selectEl.appendChild(opt);
   });
 }
@@ -1122,10 +1131,11 @@ function buildRatecardTable(productKey, selectedTerm, selectedPlacements) {
   });
   html += '<th>Discount</th></tr></thead><tbody>';
 
-  product.tiers.forEach(tier => {
+  product.tiers.forEach((tier, i) => {
     const isHighlighted = tier.placements === selectedPlacements;
+    const rangeLabel = getTierRangeLabel(product.tiers, i);
     html += '<tr class="' + (isHighlighted ? 'highlighted' : '') + '">';
-    html += '<td>' + tier.placements + '</td>';
+    html += '<td>' + rangeLabel + '</td>';
     terms.forEach(t => {
       html += '<td>' + fmt(getPrice(tier, t)) + '</td>';
     });
