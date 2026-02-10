@@ -747,6 +747,30 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           </div>
         </div>
 
+        <!-- My Requests (visible to sales reps) -->
+        <div class="admin-section" id="myRequestsSection" style="display:none; margin-top:24px;">
+          <h3>My Submitted Requests</h3>
+          <div style="overflow-x:auto;">
+            <table class="admin-table" id="myRequestsTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Client</th>
+                  <th>Product</th>
+                  <th>Term</th>
+                  <th>Placements</th>
+                  <th>Ratecard $</th>
+                  <th>Requested $</th>
+                  <th>Status</th>
+                  <th>Decided By</th>
+                </tr>
+              </thead>
+              <tbody id="myRequestsBody"></tbody>
+            </table>
+            <div class="empty-state" id="myRequestsEmpty">No requests submitted yet.</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1300,6 +1324,39 @@ function generateEmail() {
   document.getElementById('emailSubject').textContent = subject;
   document.getElementById('emailBody').textContent = body;
   document.getElementById('emailOutput').style.display = 'block';
+
+  // Save to exception log as pending
+  const log = getExceptionLog();
+  log.push({
+    id: Date.now(),
+    date: new Date().toISOString().split('T')[0],
+    rep: currentUser.email,
+    repName: currentUser.name,
+    client: client,
+    product: productKey,
+    term: termMonths,
+    placements: numPlacements,
+    ratecard: ratecardPrice,
+    requested: priceUsed,
+    status: 'pending',
+    sfLink: sfLink || '',
+    notes: notes || '',
+    decidedBy: null,
+    decidedByEmail: null,
+    decidedDate: null
+  });
+  saveExceptionLog(log);
+
+  // Reset form for new request
+  document.getElementById('reqClient').value = '';
+  document.getElementById('reqSfLink').value = '';
+  document.getElementById('reqCustomPrice').value = '';
+  document.getElementById('reqNotes').value = '';
+  document.getElementById('reqPlacements').value = '1';
+  updateRequestSummary();
+
+  // Refresh my requests list
+  renderMyRequests();
 }
 
 function copyField(id) {
@@ -1322,6 +1379,53 @@ function copyAll() {
     btn.textContent = 'Copied!';
     setTimeout(() => { btn.textContent = 'Copy All to Clipboard'; }, 2000);
   });
+}
+
+// =============================================
+// MY REQUESTS (sales rep view)
+// =============================================
+function renderMyRequests() {
+  const section = document.getElementById('myRequestsSection');
+  if (!section) return;
+
+  // Show for all roles
+  section.style.display = 'block';
+
+  const log = getExceptionLog();
+  // Sales reps see only their own; managers/admins see all
+  const filtered = currentUser.role === 'sales'
+    ? log.filter(e => e.rep === currentUser.email)
+    : log;
+
+  const tbody = document.getElementById('myRequestsBody');
+  const empty = document.getElementById('myRequestsEmpty');
+  const productNames = { addon: 'Add-On', standalone: 'Standalone' };
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  tbody.innerHTML = filtered.sort((a, b) => b.date.localeCompare(a.date)).map(e => {
+    const statusColors = {
+      pending: 'color:#fbbf24;',
+      approved: 'color:#4ade80;',
+      declined: 'color:#f87171;'
+    };
+    return '<tr>' +
+      '<td>' + e.date + '</td>' +
+      '<td>' + e.client + '</td>' +
+      '<td>' + (productNames[e.product] || e.product) + '</td>' +
+      '<td>' + e.term + ' mo</td>' +
+      '<td>' + e.placements + '</td>' +
+      '<td>' + fmt(e.ratecard) + '</td>' +
+      '<td>' + fmt(e.requested) + '</td>' +
+      '<td style="font-weight:600;' + (statusColors[e.status] || '') + '">' + (e.status || 'pending').toUpperCase() + '</td>' +
+      '<td>' + (e.decidedBy ? e.decidedBy + '<br><span style="color:#666;font-size:11px;">' + (e.decidedDate || '') + '</span>' : '--') + '</td>' +
+    '</tr>';
+  }).join('');
 }
 
 // =============================================
@@ -1463,6 +1567,9 @@ function initApp() {
   if (isPrivileged()) {
     populateRepDropdown();
   }
+
+  // Show past requests
+  renderMyRequests();
 
   // Init admin dashboard if admin
   if (currentUser.role === 'admin') {
