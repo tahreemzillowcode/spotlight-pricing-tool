@@ -1200,32 +1200,12 @@ function updateRequestMailto() {
   const totalTerm = totalMonthly * termMonths;
   const isShortTerm = termMonths < 6;
 
-  const subject = 'Pricing Approval Request: ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements' + (isShortTerm ? ' (' + termMonths + 'mo exception)' : '');
+  const subject = 'New Exception Request from ' + currentUser.name + ' - ' + client;
 
   let body = 'Hi,\n\n';
-  body += 'I\'d like to request pricing approval for the following deal:\n\n';
-  body += '--- DEAL DETAILS ---\n';
-  body += 'Client: ' + client + '\n';
-  if (sfLink) body += 'Salesforce Account: ' + sfLink + '\n';
-  body += 'Sales Rep: ' + currentUser.name + ' (' + currentUser.email + ')\n';
-  body += 'Product: ' + product.name + '\n';
-  body += 'Term: ' + termMonths + ' months' + (isShortTerm ? ' (SHORT TERM - requires approval)' : '') + '\n';
-  body += 'Placements: ' + numPlacements + '\n';
-  body += 'Ratecard Price/Placement: ' + fmt(ratecardPrice) + '\n';
-  if (!isNaN(customPrice) && customPrice > 0 && customPrice !== ratecardPrice) {
-    body += 'Requested Price/Placement: ' + fmt(customPrice) + '\n';
-    const diff = ((customPrice - ratecardPrice) / ratecardPrice * 100).toFixed(1);
-    body += 'Difference vs Ratecard: ' + diff + '%\n';
-  }
-  body += 'Total Monthly: ' + fmt(totalMonthly) + '\n';
-  body += 'Total (' + termMonths + ' mo): ' + fmt(totalTerm) + '\n';
-  body += 'Volume Discount Tier: ' + tier.discount + '%\n';
-  if (notes) {
-    body += '\nNotes: ' + notes + '\n';
-  }
-  body += '\n--- END ---\n\n';
-  body += 'Please review and approve/decline using the Spotlight Pricing Tool.\n\n';
-  body += 'Thank you,\n' + currentUser.name;
+  body += currentUser.name + ' has submitted a pricing exception request for ' + client + '.\n\n';
+  body += 'Please review the request in the Spotlight Pricing Tool.\n\n';
+  body += 'Thank you.';
 
   const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join(',');
   const mailto = 'mailto:' + encodeURIComponent(managerEmail) +
