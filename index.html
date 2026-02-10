@@ -1283,14 +1283,11 @@ function sendSlackNotification() {
     blocks: blocks
   };
 
-  fetch(SLACK_WEBHOOK_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-    redirect: 'follow'
-  })
-  .then(res => res.text())
-  .then(text => {
+  var url = SLACK_WEBHOOK_URL + '?data=' + encodeURIComponent(JSON.stringify(payload));
+
+  fetch(url)
+  .then(res => res.json())
+  .then(data => {
     statusEl.style.display = 'block';
     statusEl.style.color = '#4ade80';
     statusEl.textContent = 'Notification sent to Slack channel.';
