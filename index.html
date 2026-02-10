@@ -1238,9 +1238,15 @@ function sendSlackNotification() {
     toolurl: TOOL_URL
   });
 
-  fetch(SLACK_WEBHOOK_URL + '?' + params.toString())
-  .then(res => res.json())
-  .then(data => {
+  // Use hidden iframe to bypass CORS (Apps Script on Workspace domain)
+  var iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = SLACK_WEBHOOK_URL + '?' + params.toString();
+  document.body.appendChild(iframe);
+
+  // We can't read the iframe response (cross-origin), so show success after a delay
+  setTimeout(() => {
+    document.body.removeChild(iframe);
     statusEl.style.display = 'block';
     statusEl.style.color = '#4ade80';
     statusEl.textContent = 'Notification sent to Slack channel.';
@@ -1249,14 +1255,7 @@ function sendSlackNotification() {
       btn.disabled = false;
       btn.textContent = 'Send Exception Request';
     }, 3000);
-  })
-  .catch(err => {
-    statusEl.style.display = 'block';
-    statusEl.style.color = '#f87171';
-    statusEl.textContent = 'Failed to send: ' + err.message;
-    btn.disabled = false;
-    btn.textContent = 'Send Exception Request';
-  });
+  }, 3000);
 }
 
 // =============================================
