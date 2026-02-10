@@ -1397,6 +1397,33 @@ function generateManagerEmail(action) {
   document.getElementById('mgrEmailSubject').textContent = subject;
   document.getElementById('mgrEmailBody').textContent = body;
   document.getElementById('mgrEmailOutput').style.display = 'block';
+
+  // Log to audit trail for approved/declined actions
+  if (action === 'approved' || action === 'declined') {
+    const tier = findTierForCount(product.tiers, numPlacements);
+    const ratecardPrice = getPrice(tier, termMonths);
+    const customPrice = parseFloat(document.getElementById('reqCustomPrice').value);
+    const requested = isNaN(customPrice) || customPrice <= 0 ? ratecardPrice : customPrice;
+
+    const log = getExceptionLog();
+    log.push({
+      id: Date.now(),
+      date: new Date().toISOString().split('T')[0],
+      rep: repEmail,
+      repName: repPerson ? repPerson.name : repEmail,
+      client: client,
+      product: productKey,
+      term: termMonths,
+      placements: numPlacements,
+      ratecard: ratecardPrice,
+      requested: requested,
+      status: action,
+      decidedBy: currentUser.name,
+      decidedByEmail: currentUser.email,
+      decidedDate: new Date().toISOString().split('T')[0]
+    });
+    saveExceptionLog(log);
+  }
 }
 
 function copyAllMgr() {
