@@ -562,7 +562,8 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="pricing" onclick="switchTab('pricing')">View Pricing</button>
-    <button class="tab-btn" data-tab="request" onclick="switchTab('request')">Request Approval</button>
+    <button class="tab-btn" data-tab="request" id="requestTabBtn" onclick="switchTab('request')">Request Approval</button>
+    <button class="tab-btn" data-tab="review" id="reviewTabBtn" onclick="switchTab('review')" style="display:none;">Review Exceptions</button>
     <button class="tab-btn" data-tab="admin" id="adminTabBtn" onclick="switchTab('admin')" style="display:none;">Admin Dashboard</button>
   </div>
 
@@ -701,52 +702,6 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           </div>
         </div>
 
-        <!-- Manager Approval Section -->
-        <div class="manager-review" id="managerReview" style="display:none;">
-          <h3>Manager Actions</h3>
-          <p style="color:#888; font-size:13px; margin-bottom:16px;">Review the deal above and respond to the sales rep:</p>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label>Sales Rep</label>
-            <select id="mgrReplyTo" onchange="updateManagerReplyTo()"></select>
-          </div>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label>Notes / Reason (optional)</label>
-            <textarea id="mgrNotes" placeholder="Add any notes..."></textarea>
-          </div>
-          <div class="btn-group">
-            <button class="btn btn-green" onclick="generateManagerEmail('approved')">Approve</button>
-            <button class="btn btn-red" onclick="generateManagerEmail('declined')">Decline</button>
-            <button class="btn btn-blue" onclick="generateManagerEmail('info')">Request More Info</button>
-          </div>
-          <div id="mgrEmailOutput" style="display:none; margin-top:20px;">
-            <div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:20px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">To</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailTo')">Copy</button>
-              </div>
-              <div id="mgrEmailTo" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">CC</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailCc')">Copy</button>
-              </div>
-              <div id="mgrEmailCc" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">Subject</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailSubject')">Copy</button>
-              </div>
-              <div id="mgrEmailSubject" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">Body</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailBody')">Copy</button>
-              </div>
-              <pre id="mgrEmailBody" style="color:#e0e0e0; font-size:13px; padding:12px; background:#16213e; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; user-select:all; font-family:inherit; line-height:1.6;"></pre>
-              <div style="margin-top:16px;">
-                <button class="btn btn-gold" onclick="copyAllMgr()">Copy All to Clipboard</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- My Requests (visible to sales reps) -->
         <div class="admin-section" id="myRequestsSection" style="display:none; margin-top:24px;">
           <h3>My Submitted Requests</h3>
@@ -768,6 +723,102 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
               <tbody id="myRequestsBody"></tbody>
             </table>
             <div class="empty-state" id="myRequestsEmpty">No requests submitted yet.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== TAB: REVIEW EXCEPTIONS (managers/admins) ===== -->
+    <div class="tab-content" id="tab-review">
+      <div class="request-section" style="max-width:900px;">
+        <h2 style="color:#c9a84c; margin-bottom:20px;">Review Exception Requests</h2>
+
+        <div class="admin-section" style="margin-bottom:24px;">
+          <h3>Pending Requests</h3>
+          <div style="overflow-x:auto;">
+            <table class="admin-table" id="reviewPendingTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Rep</th>
+                  <th>Client</th>
+                  <th>Product</th>
+                  <th>Term</th>
+                  <th>Placements</th>
+                  <th>Ratecard $</th>
+                  <th>Requested $</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="reviewPendingBody"></tbody>
+            </table>
+            <div class="empty-state" id="reviewPendingEmpty">No pending requests.</div>
+          </div>
+        </div>
+
+        <div class="manager-review" id="reviewActionPanel" style="display:none;">
+          <h3 id="reviewActionTitle">Review Request</h3>
+          <div class="deal-summary" style="margin-bottom:16px;">
+            <div id="reviewDealRows"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label>Notes / Reason (optional)</label>
+            <textarea id="reviewNotes" placeholder="Add any notes..."></textarea>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-green" onclick="reviewDecision('approved')">Approve</button>
+            <button class="btn btn-red" onclick="reviewDecision('declined')">Decline</button>
+            <button class="btn btn-blue" onclick="reviewDecision('info')">Request More Info</button>
+          </div>
+          <div id="reviewEmailOutput" style="display:none; margin-top:20px;">
+            <div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:20px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">To</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailTo')">Copy</button>
+              </div>
+              <div id="reviewEmailTo" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">CC</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailCc')">Copy</button>
+              </div>
+              <div id="reviewEmailCc" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">Subject</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailSubject')">Copy</button>
+              </div>
+              <div id="reviewEmailSubject" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">Body</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailBody')">Copy</button>
+              </div>
+              <pre id="reviewEmailBody" style="color:#e0e0e0; font-size:13px; padding:12px; background:#16213e; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; user-select:all; font-family:inherit; line-height:1.6;"></pre>
+              <div style="margin-top:16px;">
+                <button class="btn btn-gold" onclick="copyAllReview()">Copy All to Clipboard</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-section" style="margin-top:24px;">
+          <h3>Past Decisions</h3>
+          <div style="overflow-x:auto;">
+            <table class="admin-table" id="reviewPastTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Rep</th>
+                  <th>Client</th>
+                  <th>Product</th>
+                  <th>Term</th>
+                  <th>Placements</th>
+                  <th>Status</th>
+                  <th>Decided By</th>
+                </tr>
+              </thead>
+              <tbody id="reviewPastBody"></tbody>
+            </table>
+            <div class="empty-state" id="reviewPastEmpty">No past decisions.</div>
           </div>
         </div>
 
@@ -1092,10 +1143,9 @@ authSubmit.addEventListener('click', () => {
   badge.textContent = roleLabels[person.role];
   badge.className = 'role-badge ' + person.role;
 
-  // Show manager actions for managers and admins
-  document.getElementById('managerReview').style.display = isPrivileged() ? 'block' : 'none';
-
-  // Show admin tab for admins only
+  // Show/hide tabs based on role
+  document.getElementById('requestTabBtn').style.display = person.role === 'sales' ? 'inline-block' : 'none';
+  document.getElementById('reviewTabBtn').style.display = isPrivileged() ? 'inline-block' : 'none';
   document.getElementById('adminTabBtn').style.display = person.role === 'admin' ? 'inline-block' : 'none';
 
   // Auto-fill manager email in request form
@@ -1429,112 +1479,171 @@ function renderMyRequests() {
 }
 
 // =============================================
-// MANAGER ACTIONS
+// REVIEW EXCEPTIONS TAB
 // =============================================
-function populateRepDropdown() {
-  const sel = document.getElementById('mgrReplyTo');
-  sel.innerHTML = '<option value="">-- Select Sales Rep --</option>';
-  TEAM.filter(t => t.role === 'sales').sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-    const o = document.createElement('option');
-    o.value = p.email;
-    o.textContent = p.name + ' (' + p.email + ')';
-    sel.appendChild(o);
-  });
+let selectedReviewId = null;
+
+function renderReviewTab() {
+  const log = getExceptionLog();
+  const productNames = { addon: 'Add-On', standalone: 'Standalone' };
+  const pending = log.filter(e => e.status === 'pending');
+  const decided = log.filter(e => e.status === 'approved' || e.status === 'declined');
+
+  // Pending table
+  const pendingBody = document.getElementById('reviewPendingBody');
+  const pendingEmpty = document.getElementById('reviewPendingEmpty');
+  if (pending.length === 0) {
+    pendingBody.innerHTML = '';
+    pendingEmpty.style.display = 'block';
+  } else {
+    pendingEmpty.style.display = 'none';
+    pendingBody.innerHTML = pending.sort((a, b) => b.date.localeCompare(a.date)).map(e => {
+      return '<tr>' +
+        '<td>' + e.date + '</td>' +
+        '<td>' + (e.repName || e.rep) + '</td>' +
+        '<td>' + e.client + '</td>' +
+        '<td>' + (productNames[e.product] || e.product) + '</td>' +
+        '<td>' + e.term + ' mo</td>' +
+        '<td>' + e.placements + '</td>' +
+        '<td>' + fmt(e.ratecard) + '</td>' +
+        '<td>' + fmt(e.requested) + '</td>' +
+        '<td><button class="btn btn-gold btn-sm" style="padding:6px 14px;font-size:12px;" onclick="selectForReview(' + e.id + ')">Review</button></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  // Past decisions table
+  const pastBody = document.getElementById('reviewPastBody');
+  const pastEmpty = document.getElementById('reviewPastEmpty');
+  if (decided.length === 0) {
+    pastBody.innerHTML = '';
+    pastEmpty.style.display = 'block';
+  } else {
+    pastEmpty.style.display = 'none';
+    pastBody.innerHTML = decided.sort((a, b) => b.date.localeCompare(a.date)).map(e => {
+      const statusColors = { approved: 'color:#4ade80;', declined: 'color:#f87171;' };
+      return '<tr>' +
+        '<td>' + e.date + '</td>' +
+        '<td>' + (e.repName || e.rep) + '</td>' +
+        '<td>' + e.client + '</td>' +
+        '<td>' + (productNames[e.product] || e.product) + '</td>' +
+        '<td>' + e.term + ' mo</td>' +
+        '<td>' + e.placements + '</td>' +
+        '<td style="font-weight:600;' + (statusColors[e.status] || '') + '">' + e.status.toUpperCase() + '</td>' +
+        '<td>' + (e.decidedBy || '--') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
 }
 
-function generateManagerEmail(action) {
-  const repEmail = document.getElementById('mgrReplyTo').value;
-  const repPerson = TEAM.find(t => t.email === repEmail);
-  const repName = repPerson ? repPerson.name.split(' ')[0] : '';
-  const mgrNotes = document.getElementById('mgrNotes').value.trim();
-  const client = document.getElementById('reqClient').value.trim() || '[Client]';
-  const productKey = document.getElementById('reqProduct').value;
-  const product = PRODUCTS[productKey];
-  const termMonths = parseInt(document.getElementById('reqTerm').value);
-  const numPlacements = parseInt(document.getElementById('reqPlacements').value) || 1;
-  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(e => e !== currentUser.email).join('; ');
+function selectForReview(id) {
+  selectedReviewId = id;
+  const log = getExceptionLog();
+  const e = log.find(x => x.id === id);
+  if (!e) return;
 
-  if (!repEmail) {
-    alert('Please select a sales rep.');
-    return;
+  const productNames = { addon: 'Add-On Spotlight', standalone: 'Standalone Spotlight' };
+  let rows = '';
+  rows += dealRow('Sales Rep', (e.repName || e.rep));
+  rows += dealRow('Client', e.client);
+  rows += dealRow('Product', productNames[e.product] || e.product);
+  rows += dealRow('Term', e.term + ' months');
+  rows += dealRow('Placements', e.placements);
+  rows += dealRow('Ratecard Price/Placement', fmt(e.ratecard));
+  rows += dealRow('Requested Price/Placement', fmt(e.requested));
+  if (e.ratecard !== e.requested) {
+    const diff = ((e.requested - e.ratecard) / e.ratecard * 100).toFixed(1);
+    rows += dealRow('vs Ratecard', diff + '%');
   }
+  rows += '<div class="deal-row deal-total"><span class="dl">Total Monthly</span><span class="dv">' + fmt(e.requested * e.placements) + '</span></div>';
+  rows += '<div class="deal-row"><span class="dl">Total (' + e.term + ' mo)</span><span class="dv">' + fmt(e.requested * e.placements * e.term) + '</span></div>';
+  if (e.notes) rows += dealRow('Business Case', e.notes);
+  if (e.sfLink) rows += dealRow('Salesforce', e.sfLink);
+
+  document.getElementById('reviewDealRows').innerHTML = rows;
+  document.getElementById('reviewActionTitle').textContent = 'Review: ' + e.client;
+  document.getElementById('reviewActionPanel').style.display = 'block';
+  document.getElementById('reviewEmailOutput').style.display = 'none';
+  document.getElementById('reviewNotes').value = '';
+  document.getElementById('reviewActionPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function reviewDecision(action) {
+  if (!selectedReviewId) return;
+  const log = getExceptionLog();
+  const e = log.find(x => x.id === selectedReviewId);
+  if (!e) return;
+
+  const repPerson = TEAM.find(t => t.email === e.rep);
+  const repName = repPerson ? repPerson.name.split(' ')[0] : (e.repName || '').split(' ')[0];
+  const notes = document.getElementById('reviewNotes').value.trim();
+  const productNames = { addon: 'Add-On Spotlight', standalone: 'Standalone Spotlight' };
+  const productName = productNames[e.product] || e.product;
+  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(addr => addr !== currentUser.email).join('; ');
 
   let subject, body;
 
   if (action === 'approved') {
-    subject = 'APPROVED: Pricing Exception - ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements';
+    e.status = 'approved';
+    subject = 'APPROVED: Pricing Exception - ' + e.client + ' - ' + productName + ' - ' + e.placements + ' placements';
     body = 'Hi ' + repName + ',\n\n';
     body += 'Your pricing exception request has been APPROVED.\n\n';
     body += '--- DEAL DETAILS ---\n';
-    body += 'Client: ' + client + '\n';
-    body += 'Product: ' + product.name + '\n';
-    body += 'Term: ' + termMonths + ' months\n';
-    body += 'Placements: ' + numPlacements + '\n';
+    body += 'Client: ' + e.client + '\n';
+    body += 'Product: ' + productName + '\n';
+    body += 'Term: ' + e.term + ' months\n';
+    body += 'Placements: ' + e.placements + '\n';
+    body += 'Approved Price/Placement: ' + fmt(e.requested) + '\n';
     body += '--- END ---\n\n';
     body += 'You are approved to proceed with the pricing above.\n';
-    if (mgrNotes) body += '\nNotes: ' + mgrNotes + '\n';
+    if (notes) body += '\nNotes: ' + notes + '\n';
     body += '\nApproved by: ' + currentUser.name + '\n\nThank you.';
   } else if (action === 'declined') {
-    subject = 'DECLINED: Pricing Exception - ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements';
+    e.status = 'declined';
+    subject = 'DECLINED: Pricing Exception - ' + e.client + ' - ' + productName + ' - ' + e.placements + ' placements';
     body = 'Hi ' + repName + ',\n\n';
     body += 'Your pricing exception request has been DECLINED.\n\n';
     body += '--- DEAL DETAILS ---\n';
-    body += 'Client: ' + client + '\n';
-    body += 'Product: ' + product.name + '\n';
-    body += 'Term: ' + termMonths + ' months\n';
-    body += 'Placements: ' + numPlacements + '\n';
+    body += 'Client: ' + e.client + '\n';
+    body += 'Product: ' + productName + '\n';
+    body += 'Term: ' + e.term + ' months\n';
+    body += 'Placements: ' + e.placements + '\n';
     body += '--- END ---\n';
-    if (mgrNotes) body += '\nReason: ' + mgrNotes + '\n';
+    if (notes) body += '\nReason: ' + notes + '\n';
     body += '\nPlease reach out if you have questions.\n';
     body += '\nDeclined by: ' + currentUser.name;
   } else {
-    subject = 'More Info Needed: Pricing Exception - ' + client;
+    subject = 'More Info Needed: Pricing Exception - ' + e.client;
     body = 'Hi ' + repName + ',\n\n';
-    body += 'I need more information regarding your pricing exception request for ' + client + '.\n\n';
-    if (mgrNotes) body += mgrNotes + '\n\n';
+    body += 'I need more information regarding your pricing exception request for ' + e.client + '.\n\n';
+    if (notes) body += notes + '\n\n';
     body += 'Please update your request and resubmit.\n\n';
     body += 'Thank you,\n' + currentUser.name;
   }
 
-  document.getElementById('mgrEmailTo').textContent = repEmail;
-  document.getElementById('mgrEmailCc').textContent = cc;
-  document.getElementById('mgrEmailSubject').textContent = subject;
-  document.getElementById('mgrEmailBody').textContent = body;
-  document.getElementById('mgrEmailOutput').style.display = 'block';
-
-  // Log to audit trail for approved/declined actions
+  // Update log for approve/decline
   if (action === 'approved' || action === 'declined') {
-    const tier = findTierForCount(product.tiers, numPlacements);
-    const ratecardPrice = getPrice(tier, termMonths);
-    const customPrice = parseFloat(document.getElementById('reqCustomPrice').value);
-    const requested = isNaN(customPrice) || customPrice <= 0 ? ratecardPrice : customPrice;
-
-    const log = getExceptionLog();
-    log.push({
-      id: Date.now(),
-      date: new Date().toISOString().split('T')[0],
-      rep: repEmail,
-      repName: repPerson ? repPerson.name : repEmail,
-      client: client,
-      product: productKey,
-      term: termMonths,
-      placements: numPlacements,
-      ratecard: ratecardPrice,
-      requested: requested,
-      status: action,
-      decidedBy: currentUser.name,
-      decidedByEmail: currentUser.email,
-      decidedDate: new Date().toISOString().split('T')[0]
-    });
+    e.decidedBy = currentUser.name;
+    e.decidedByEmail = currentUser.email;
+    e.decidedDate = new Date().toISOString().split('T')[0];
     saveExceptionLog(log);
   }
+
+  document.getElementById('reviewEmailTo').textContent = e.rep;
+  document.getElementById('reviewEmailCc').textContent = cc;
+  document.getElementById('reviewEmailSubject').textContent = subject;
+  document.getElementById('reviewEmailBody').textContent = body;
+  document.getElementById('reviewEmailOutput').style.display = 'block';
+
+  // Refresh the pending list
+  renderReviewTab();
 }
 
-function copyAllMgr() {
-  const to = document.getElementById('mgrEmailTo').textContent;
-  const cc = document.getElementById('mgrEmailCc').textContent;
-  const subject = document.getElementById('mgrEmailSubject').textContent;
-  const body = document.getElementById('mgrEmailBody').textContent;
+function copyAllReview() {
+  const to = document.getElementById('reviewEmailTo').textContent;
+  const cc = document.getElementById('reviewEmailCc').textContent;
+  const subject = document.getElementById('reviewEmailSubject').textContent;
+  const body = document.getElementById('reviewEmailBody').textContent;
   const all = 'To: ' + to + '\nCC: ' + cc + '\nSubject: ' + subject + '\n\n' + body;
   navigator.clipboard.writeText(all).then(() => {
     const btn = event.target;
@@ -1550,26 +1659,26 @@ function initApp() {
   // Pricing calculator: sales reps see 6mo+ only; managers see all
   populateTermDropdown(document.getElementById('calcTerm'), false, false);
 
-  // Request form: ALL terms available, plain labels (no % shown)
-  populateTermDropdown(document.getElementById('reqTerm'), true, true);
-
   updateCalculator();
-  updateRequestSummary();
 
-  // Listen for request form changes
-  ['reqClient', 'reqSfLink', 'reqManager', 'reqProduct', 'reqTerm', 'reqPlacements', 'reqCustomPrice', 'reqNotes'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', updateRequestSummary);
-    el.addEventListener('change', updateRequestSummary);
-  });
-
-  // Populate sales rep dropdown for manager actions
-  if (isPrivileged()) {
-    populateRepDropdown();
+  // Request form only for sales reps
+  if (currentUser.role === 'sales') {
+    populateTermDropdown(document.getElementById('reqTerm'), true, true);
+    updateRequestSummary();
+    ['reqClient', 'reqSfLink', 'reqManager', 'reqProduct', 'reqTerm', 'reqPlacements', 'reqCustomPrice', 'reqNotes'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', updateRequestSummary);
+      el.addEventListener('change', updateRequestSummary);
+    });
   }
 
-  // Show past requests
+  // Show past requests for sales reps
   renderMyRequests();
+
+  // Render review tab for managers/admins
+  if (isPrivileged()) {
+    renderReviewTab();
+  }
 
   // Init admin dashboard if admin
   if (currentUser.role === 'admin') {
