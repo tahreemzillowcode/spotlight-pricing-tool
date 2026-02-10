@@ -666,9 +666,40 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
         </div>
 
         <div class="btn-group">
-          <button class="btn btn-gold" id="requestSlackBtn" onclick="sendSlackNotification()">Send Exception Request</button>
+          <button class="btn btn-gold" id="generateEmailBtn" onclick="generateEmail()">Generate Exception Request Email</button>
         </div>
-        <div id="slackStatus" style="margin-top:12px;font-size:13px;display:none;"></div>
+
+        <div id="emailOutput" style="display:none; margin-top:20px;">
+          <div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <span style="font-size:12px; color:#999; text-transform:uppercase;">To</span>
+              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailTo')">Copy</button>
+            </div>
+            <div id="emailTo" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <span style="font-size:12px; color:#999; text-transform:uppercase;">CC</span>
+              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailCc')">Copy</button>
+            </div>
+            <div id="emailCc" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <span style="font-size:12px; color:#999; text-transform:uppercase;">Subject</span>
+              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailSubject')">Copy</button>
+            </div>
+            <div id="emailSubject" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <span style="font-size:12px; color:#999; text-transform:uppercase;">Body</span>
+              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailBody')">Copy</button>
+            </div>
+            <pre id="emailBody" style="color:#e0e0e0; font-size:13px; padding:12px; background:#16213e; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; user-select:all; font-family:inherit; line-height:1.6;"></pre>
+
+            <div style="margin-top:16px;">
+              <button class="btn btn-gold" onclick="copyAll()">Copy All to Clipboard</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Manager Approval Section -->
         <div class="manager-review" id="managerReview" style="display:none;">
@@ -1189,7 +1220,7 @@ function dealRow(label, value) {
   return '<div class="deal-row"><span class="dl">' + label + '</span><span class="dv">' + value + '</span></div>';
 }
 
-function sendSlackNotification() {
+function generateEmail() {
   const client = document.getElementById('reqClient').value.trim();
   const sfLink = document.getElementById('reqSfLink').value.trim();
   const productKey = document.getElementById('reqProduct').value;
@@ -1210,52 +1241,60 @@ function sendSlackNotification() {
     return;
   }
 
-  if (!SLACK_WEBHOOK_URL || SLACK_WEBHOOK_URL === 'PASTE_YOUR_SLACK_WEBHOOK_URL_HERE') {
-    alert('Slack webhook URL not configured. Please contact your admin.');
-    return;
+  const managerEmail = document.getElementById('reqManager').value.trim();
+  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join('; ');
+  const subject = 'Pricing Exception Request: ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements';
+
+  let body = 'Hi,\n\n';
+  body += currentUser.name + ' has submitted a pricing exception request. Please review the details below.\n\n';
+  body += '--- DEAL DETAILS ---\n';
+  body += 'Client: ' + client + '\n';
+  if (sfLink) body += 'Salesforce Account: ' + sfLink + '\n';
+  body += 'Sales Rep: ' + currentUser.name + ' (' + currentUser.email + ')\n';
+  body += 'Product: ' + product.name + '\n';
+  body += 'Term: ' + termMonths + ' months' + (isShortTerm ? ' (short term - requires approval)' : '') + '\n';
+  body += 'Placements: ' + numPlacements + '\n';
+  body += 'Ratecard Price/Placement: ' + fmt(ratecardPrice) + '\n';
+  body += 'Requested Price/Placement: ' + fmt(priceUsed) + '\n';
+  if (priceUsed !== ratecardPrice) {
+    const diff = ((priceUsed - ratecardPrice) / ratecardPrice * 100).toFixed(1);
+    body += 'Difference vs Ratecard: ' + diff + '%\n';
   }
+  body += 'Total Monthly: ' + fmt(totalMonthly) + '\n';
+  body += 'Total (' + termMonths + ' mo): ' + fmt(totalTerm) + '\n';
+  body += 'Volume Discount Tier: ' + tier.discount + '%\n';
+  if (notes) body += '\nBusiness Case: ' + notes + '\n';
+  body += '\n--- END ---\n\n';
+  body += 'Review in Pricing Tool: ' + TOOL_URL + '\n\n';
+  body += 'Thank you,\n' + currentUser.name;
 
-  const statusEl = document.getElementById('slackStatus');
-  const btn = document.getElementById('requestSlackBtn');
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
-  statusEl.style.display = 'none';
+  document.getElementById('emailTo').textContent = managerEmail;
+  document.getElementById('emailCc').textContent = cc;
+  document.getElementById('emailSubject').textContent = subject;
+  document.getElementById('emailBody').textContent = body;
+  document.getElementById('emailOutput').style.display = 'block';
+}
 
-  // Build simple query params — Apps Script builds the Slack message
-  const params = new URLSearchParams({
-    rep: currentUser.name,
-    client: client,
-    product: product.name,
-    term: termMonths,
-    placements: numPlacements,
-    ratecard: fmt(ratecardPrice),
-    requested: fmt(priceUsed),
-    monthly: fmt(totalMonthly),
-    total: fmt(totalTerm),
-    discount: tier.discount,
-    sflink: sfLink || '',
-    notes: notes || '',
-    toolurl: TOOL_URL
+function copyField(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
   });
+}
 
-  // Use hidden iframe to bypass CORS (Apps Script on Workspace domain)
-  var iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.src = SLACK_WEBHOOK_URL + '?' + params.toString();
-  document.body.appendChild(iframe);
-
-  // We can't read the iframe response (cross-origin), so show success after a delay
-  setTimeout(() => {
-    document.body.removeChild(iframe);
-    statusEl.style.display = 'block';
-    statusEl.style.color = '#4ade80';
-    statusEl.textContent = 'Notification sent to Slack channel.';
-    btn.textContent = 'Sent!';
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = 'Send Exception Request';
-    }, 3000);
-  }, 3000);
+function copyAll() {
+  const to = document.getElementById('emailTo').textContent;
+  const cc = document.getElementById('emailCc').textContent;
+  const subject = document.getElementById('emailSubject').textContent;
+  const body = document.getElementById('emailBody').textContent;
+  const all = 'To: ' + to + '\nCC: ' + cc + '\nSubject: ' + subject + '\n\n' + body;
+  navigator.clipboard.writeText(all).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy All to Clipboard'; }, 2000);
+  });
 }
 
 // =============================================
