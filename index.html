@@ -525,13 +525,22 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
   <div class="auth-card">
     <h1>Spotlight Pricing Tool</h1>
     <p>Sign in to access ratecard pricing and request approvals</p>
-    <label for="authWho">Select Your Name</label>
-    <select id="authWho">
-      <option value="">-- Choose --</option>
+    <label for="authRole">Select Your Role</label>
+    <select id="authRole">
+      <option value="">-- Choose Role --</option>
+      <option value="admin">Admin</option>
+      <option value="manager">Sales Manager</option>
+      <option value="sales">Sales Member</option>
     </select>
+    <div id="authNameDiv" style="display:none;">
+      <label for="authWho">Select Your Name</label>
+      <select id="authWho">
+        <option value="">-- Choose Name --</option>
+      </select>
+    </div>
     <div id="managerPasscode" style="display:none;">
-      <label for="authPasscode">Manager Passcode</label>
-      <input type="password" id="authPasscode" placeholder="Enter manager passcode">
+      <label for="authPasscode">Passcode</label>
+      <input type="password" id="authPasscode" placeholder="Enter passcode">
     </div>
     <button class="auth-btn" id="authSubmit" disabled>Sign In</button>
   </div>
@@ -646,8 +655,8 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
             <input type="number" id="reqCustomPrice" placeholder="Leave blank for ratecard price" oninput="updateRequestSummary()">
           </div>
           <div class="form-group full-width">
-            <label>Notes</label>
-            <textarea id="reqNotes" placeholder="Any additional context for the approval request..."></textarea>
+            <label>Business Case</label>
+            <textarea id="reqNotes" placeholder="Describe the business case for this exception"></textarea>
           </div>
         </div>
 
@@ -867,6 +876,15 @@ const TERM_LABELS_SHORT = {
   12: '12 mo (base)'
 };
 
+// Plain labels (no %) for the exception request form
+const TERM_LABELS_PLAIN = {
+  1:  '1 month',
+  3:  '3 months',
+  6:  '6 months',
+  9:  '9 months',
+  12: '12 months'
+};
+
 function isPrivileged() {
   return currentUser.role === 'manager' || currentUser.role === 'admin';
 }
@@ -910,46 +928,51 @@ const ALL_TERMS = [1, 3, 6, 9, 12];
 let currentUser = { name: '', email: '', role: 'sales', manager: null };
 
 // =============================================
-// AUTH
+// AUTH (two-step: role → name)
 // =============================================
+const authRole = document.getElementById('authRole');
+const authNameDiv = document.getElementById('authNameDiv');
 const authWho = document.getElementById('authWho');
 const authPasscode = document.getElementById('authPasscode');
 const authSubmit = document.getElementById('authSubmit');
 const managerPasscodeDiv = document.getElementById('managerPasscode');
 
-// Populate the sign-in dropdown
-(function buildAuthDropdown() {
-  const admins = TEAM.filter(t => t.role === 'admin');
-  const managers = TEAM.filter(t => t.role === 'manager');
-  const sales = TEAM.filter(t => t.role === 'sales').sort((a, b) => a.name.localeCompare(b.name));
-
-  [
-    { label: 'Admin', list: admins },
-    { label: 'Managers', list: managers },
-    { label: 'Sales Representatives', list: sales }
-  ].forEach(({ label, list }) => {
-    if (!list.length) return;
-    const grp = document.createElement('optgroup');
-    grp.label = label;
-    list.forEach(p => {
-      const o = document.createElement('option');
-      o.value = p.email;
-      o.textContent = p.name;
-      grp.appendChild(o);
-    });
-    authWho.appendChild(grp);
+function populateNameDropdown(role) {
+  authWho.innerHTML = '<option value="">-- Choose Name --</option>';
+  const people = TEAM.filter(t => t.role === role).sort((a, b) => a.name.localeCompare(b.name));
+  people.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.email;
+    o.textContent = p.name;
+    authWho.appendChild(o);
   });
-})();
+}
+
+authRole.addEventListener('change', () => {
+  const role = authRole.value;
+  if (!role) {
+    authNameDiv.style.display = 'none';
+    managerPasscodeDiv.style.display = 'none';
+    authSubmit.disabled = true;
+    return;
+  }
+  populateNameDropdown(role);
+  authNameDiv.style.display = 'block';
+  const needsPasscode = role === 'manager' || role === 'admin';
+  managerPasscodeDiv.style.display = needsPasscode ? 'block' : 'none';
+  authPasscode.value = '';
+  validateAuth();
+});
 
 function getSelectedPerson() {
   return TEAM.find(t => t.email === authWho.value) || null;
 }
 
 function validateAuth() {
+  const role = authRole.value;
   const person = getSelectedPerson();
-  if (!person) { authSubmit.disabled = true; return; }
-  const needsPasscode = person.role === 'manager' || person.role === 'admin';
-  managerPasscodeDiv.style.display = needsPasscode ? 'block' : 'none';
+  if (!role || !person) { authSubmit.disabled = true; return; }
+  const needsPasscode = role === 'manager' || role === 'admin';
   authSubmit.disabled = needsPasscode && authPasscode.value.length === 0;
 }
 
@@ -996,10 +1019,12 @@ function signOut() {
   currentUser = { name: '', email: '', role: 'sales', manager: null };
   document.getElementById('app').classList.remove('visible');
   document.getElementById('authGate').style.display = 'flex';
+  authRole.value = '';
   authWho.value = '';
   authPasscode.value = '';
+  authNameDiv.style.display = 'none';
   managerPasscodeDiv.style.display = 'none';
-  validateAuth();
+  authSubmit.disabled = true;
 }
 
 // =============================================
@@ -1029,13 +1054,13 @@ function getAvailableTerms() {
 // =============================================
 // POPULATE DROPDOWNS
 // =============================================
-function populateTermDropdown(selectEl, includeAllTerms) {
+function populateTermDropdown(selectEl, includeAllTerms, usePlainLabels) {
   const terms = includeAllTerms ? ALL_TERMS : getAvailableTerms();
   selectEl.innerHTML = '';
   terms.forEach(t => {
     const opt = document.createElement('option');
     opt.value = t;
-    opt.textContent = getTermLabel(t);
+    opt.textContent = usePlainLabels ? TERM_LABELS_PLAIN[t] : getTermLabel(t);
     selectEl.appendChild(opt);
   });
 }
@@ -1270,11 +1295,11 @@ function updateManagerMailtos() {
 // =============================================
 function initApp() {
   // Pricing calculator: sales reps see 6mo+ only; managers see all
-  populateTermDropdown(document.getElementById('calcTerm'), false);
+  populateTermDropdown(document.getElementById('calcTerm'), false, false);
   populatePlacementDropdown(document.getElementById('calcPlacements'), 'addon');
 
-  // Request form: ALL terms available (1mo, 3mo as exception requests)
-  populateTermDropdown(document.getElementById('reqTerm'), true);
+  // Request form: ALL terms available, plain labels (no % shown)
+  populateTermDropdown(document.getElementById('reqTerm'), true, true);
   populatePlacementDropdown(document.getElementById('reqPlacements'), 'addon');
 
   updateCalculator();
