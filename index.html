@@ -706,17 +706,44 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           <h3>Manager Actions</h3>
           <p style="color:#888; font-size:13px; margin-bottom:16px;">Review the deal above and respond to the sales rep:</p>
           <div class="form-group" style="margin-bottom:16px;">
-            <label>Sales Rep Email (reply to)</label>
-            <input type="email" id="mgrReplyTo" placeholder="salesrep@zillowgroup.com">
+            <label>Sales Rep</label>
+            <select id="mgrReplyTo" onchange="updateManagerReplyTo()"></select>
           </div>
           <div class="form-group" style="margin-bottom:16px;">
             <label>Notes / Reason (optional)</label>
             <textarea id="mgrNotes" placeholder="Add any notes..."></textarea>
           </div>
           <div class="btn-group">
-            <a class="btn btn-green" id="approveMailto" href="#">Approve</a>
-            <a class="btn btn-red" id="declineMailto" href="#">Decline</a>
-            <a class="btn btn-blue" id="infoMailto" href="#">Request More Info</a>
+            <button class="btn btn-green" onclick="generateManagerEmail('approved')">Approve</button>
+            <button class="btn btn-red" onclick="generateManagerEmail('declined')">Decline</button>
+            <button class="btn btn-blue" onclick="generateManagerEmail('info')">Request More Info</button>
+          </div>
+          <div id="mgrEmailOutput" style="display:none; margin-top:20px;">
+            <div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:20px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">To</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailTo')">Copy</button>
+              </div>
+              <div id="mgrEmailTo" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">CC</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailCc')">Copy</button>
+              </div>
+              <div id="mgrEmailCc" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">Subject</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailSubject')">Copy</button>
+              </div>
+              <div id="mgrEmailSubject" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:12px; color:#999; text-transform:uppercase;">Body</span>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('mgrEmailBody')">Copy</button>
+              </div>
+              <pre id="mgrEmailBody" style="color:#e0e0e0; font-size:13px; padding:12px; background:#16213e; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; user-select:all; font-family:inherit; line-height:1.6;"></pre>
+              <div style="margin-top:16px;">
+                <button class="btn btn-gold" onclick="copyAllMgr()">Copy All to Clipboard</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1300,55 +1327,89 @@ function copyAll() {
 // =============================================
 // MANAGER ACTIONS
 // =============================================
-function updateManagerMailtos() {
-  const replyTo = document.getElementById('mgrReplyTo').value.trim();
+function populateRepDropdown() {
+  const sel = document.getElementById('mgrReplyTo');
+  sel.innerHTML = '<option value="">-- Select Sales Rep --</option>';
+  TEAM.filter(t => t.role === 'sales').sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.email;
+    o.textContent = p.name + ' (' + p.email + ')';
+    sel.appendChild(o);
+  });
+}
+
+function generateManagerEmail(action) {
+  const repEmail = document.getElementById('mgrReplyTo').value;
+  const repPerson = TEAM.find(t => t.email === repEmail);
+  const repName = repPerson ? repPerson.name.split(' ')[0] : '';
   const mgrNotes = document.getElementById('mgrNotes').value.trim();
   const client = document.getElementById('reqClient').value.trim() || '[Client]';
   const productKey = document.getElementById('reqProduct').value;
   const product = PRODUCTS[productKey];
   const termMonths = parseInt(document.getElementById('reqTerm').value);
-  const placements = parseInt(document.getElementById('reqPlacements').value) || 1;
-  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join(',');
+  const numPlacements = parseInt(document.getElementById('reqPlacements').value) || 1;
+  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(e => e !== currentUser.email).join('; ');
 
-  // Approve
-  const approveSubject = 'APPROVED: Pricing Request - ' + client + ' - ' + product.name + ' - ' + placements + ' placements';
-  let approveBody = 'Hi,\n\nThe following pricing request has been APPROVED.\n\n';
-  approveBody += 'Client: ' + client + '\n';
-  approveBody += 'Product: ' + product.name + '\n';
-  approveBody += 'Term: ' + termMonths + ' months\n';
-  approveBody += 'Placements: ' + placements + '\n';
-  if (mgrNotes) approveBody += '\nManager Notes: ' + mgrNotes + '\n';
-  approveBody += '\nApproved by: ' + currentUser.name + '\n\nThank you.';
+  if (!repEmail) {
+    alert('Please select a sales rep.');
+    return;
+  }
 
-  document.getElementById('approveMailto').href = 'mailto:' + encodeURIComponent(replyTo) +
-    '?cc=' + encodeURIComponent(cc) +
-    '&subject=' + encodeURIComponent(approveSubject) +
-    '&body=' + encodeURIComponent(approveBody);
+  let subject, body;
 
-  // Decline
-  const declineSubject = 'DECLINED: Pricing Request - ' + client + ' - ' + product.name + ' - ' + placements + ' placements';
-  let declineBody = 'Hi,\n\nThe following pricing request has been DECLINED.\n\n';
-  declineBody += 'Client: ' + client + '\n';
-  declineBody += 'Product: ' + product.name + '\n';
-  declineBody += 'Term: ' + termMonths + ' months\n';
-  declineBody += 'Placements: ' + placements + '\n';
-  if (mgrNotes) declineBody += '\nReason/Notes: ' + mgrNotes + '\n';
-  declineBody += '\nDeclined by: ' + currentUser.name + '\n\nPlease reach out if you have questions.';
+  if (action === 'approved') {
+    subject = 'APPROVED: Pricing Exception - ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements';
+    body = 'Hi ' + repName + ',\n\n';
+    body += 'Your pricing exception request has been APPROVED.\n\n';
+    body += '--- DEAL DETAILS ---\n';
+    body += 'Client: ' + client + '\n';
+    body += 'Product: ' + product.name + '\n';
+    body += 'Term: ' + termMonths + ' months\n';
+    body += 'Placements: ' + numPlacements + '\n';
+    body += '--- END ---\n\n';
+    body += 'You are approved to proceed with the pricing above.\n';
+    if (mgrNotes) body += '\nNotes: ' + mgrNotes + '\n';
+    body += '\nApproved by: ' + currentUser.name + '\n\nThank you.';
+  } else if (action === 'declined') {
+    subject = 'DECLINED: Pricing Exception - ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements';
+    body = 'Hi ' + repName + ',\n\n';
+    body += 'Your pricing exception request has been DECLINED.\n\n';
+    body += '--- DEAL DETAILS ---\n';
+    body += 'Client: ' + client + '\n';
+    body += 'Product: ' + product.name + '\n';
+    body += 'Term: ' + termMonths + ' months\n';
+    body += 'Placements: ' + numPlacements + '\n';
+    body += '--- END ---\n';
+    if (mgrNotes) body += '\nReason: ' + mgrNotes + '\n';
+    body += '\nPlease reach out if you have questions.\n';
+    body += '\nDeclined by: ' + currentUser.name;
+  } else {
+    subject = 'More Info Needed: Pricing Exception - ' + client;
+    body = 'Hi ' + repName + ',\n\n';
+    body += 'I need more information regarding your pricing exception request for ' + client + '.\n\n';
+    if (mgrNotes) body += mgrNotes + '\n\n';
+    body += 'Please update your request and resubmit.\n\n';
+    body += 'Thank you,\n' + currentUser.name;
+  }
 
-  document.getElementById('declineMailto').href = 'mailto:' + encodeURIComponent(replyTo) +
-    '?cc=' + encodeURIComponent(cc) +
-    '&subject=' + encodeURIComponent(declineSubject) +
-    '&body=' + encodeURIComponent(declineBody);
+  document.getElementById('mgrEmailTo').textContent = repEmail;
+  document.getElementById('mgrEmailCc').textContent = cc;
+  document.getElementById('mgrEmailSubject').textContent = subject;
+  document.getElementById('mgrEmailBody').textContent = body;
+  document.getElementById('mgrEmailOutput').style.display = 'block';
+}
 
-  // Request More Info
-  const infoSubject = 'More Info Needed: Pricing Request - ' + client;
-  let infoBody = 'Hi,\n\nI need more information regarding the pricing request for ' + client + '.\n\n';
-  if (mgrNotes) infoBody += mgrNotes + '\n\n';
-  infoBody += 'Please update the request and resubmit.\n\nThank you,\n' + currentUser.name;
-
-  document.getElementById('infoMailto').href = 'mailto:' + encodeURIComponent(replyTo) +
-    '?subject=' + encodeURIComponent(infoSubject) +
-    '&body=' + encodeURIComponent(infoBody);
+function copyAllMgr() {
+  const to = document.getElementById('mgrEmailTo').textContent;
+  const cc = document.getElementById('mgrEmailCc').textContent;
+  const subject = document.getElementById('mgrEmailSubject').textContent;
+  const body = document.getElementById('mgrEmailBody').textContent;
+  const all = 'To: ' + to + '\nCC: ' + cc + '\nSubject: ' + subject + '\n\n' + body;
+  navigator.clipboard.writeText(all).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy All to Clipboard'; }, 2000);
+  });
 }
 
 // =============================================
@@ -1367,16 +1428,14 @@ function initApp() {
   // Listen for request form changes
   ['reqClient', 'reqSfLink', 'reqManager', 'reqProduct', 'reqTerm', 'reqPlacements', 'reqCustomPrice', 'reqNotes'].forEach(id => {
     const el = document.getElementById(id);
-    el.addEventListener('input', () => { updateRequestSummary(); updateManagerMailtos(); });
-    el.addEventListener('change', () => { updateRequestSummary(); updateManagerMailtos(); });
+    el.addEventListener('input', updateRequestSummary);
+    el.addEventListener('change', updateRequestSummary);
   });
 
-  // Listen for manager fields
-  ['mgrReplyTo', 'mgrNotes'].forEach(id => {
-    document.getElementById(id).addEventListener('input', updateManagerMailtos);
-  });
-
-  updateManagerMailtos();
+  // Populate sales rep dropdown for manager actions
+  if (isPrivileged()) {
+    populateRepDropdown();
+  }
 
   // Init admin dashboard if admin
   if (currentUser.role === 'admin') {
