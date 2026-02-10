@@ -766,38 +766,12 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
             <label>Notes / Reason (optional)</label>
             <textarea id="reviewNotes" placeholder="Add any notes..."></textarea>
           </div>
-          <div class="btn-group">
+          <div class="btn-group" id="reviewBtnGroup">
             <button class="btn btn-green" onclick="reviewDecision('approved')">Approve</button>
             <button class="btn btn-red" onclick="reviewDecision('declined')">Decline</button>
             <button class="btn btn-blue" onclick="reviewDecision('info')">Request More Info</button>
           </div>
-          <div id="reviewEmailOutput" style="display:none; margin-top:20px;">
-            <div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:20px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">To</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailTo')">Copy</button>
-              </div>
-              <div id="reviewEmailTo" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">CC</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailCc')">Copy</button>
-              </div>
-              <div id="reviewEmailCc" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">Subject</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailSubject')">Copy</button>
-              </div>
-              <div id="reviewEmailSubject" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:12px; color:#999; text-transform:uppercase;">Body</span>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('reviewEmailBody')">Copy</button>
-              </div>
-              <pre id="reviewEmailBody" style="color:#e0e0e0; font-size:13px; padding:12px; background:#16213e; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; user-select:all; font-family:inherit; line-height:1.6;"></pre>
-              <div style="margin-top:16px;">
-                <button class="btn btn-gold" onclick="copyAllReview()">Copy All to Clipboard</button>
-              </div>
-            </div>
-          </div>
+          <div id="reviewResult"></div>
         </div>
 
         <div class="admin-section" style="margin-top:24px;">
@@ -1563,7 +1537,8 @@ function selectForReview(id) {
   document.getElementById('reviewDealRows').innerHTML = rows;
   document.getElementById('reviewActionTitle').textContent = 'Review: ' + e.client;
   document.getElementById('reviewActionPanel').style.display = 'block';
-  document.getElementById('reviewEmailOutput').style.display = 'none';
+  document.getElementById('reviewBtnGroup').style.display = 'flex';
+  document.getElementById('reviewResult').innerHTML = '';
   document.getElementById('reviewNotes').value = '';
   document.getElementById('reviewActionPanel').scrollIntoView({ behavior: 'smooth' });
 }
@@ -1581,10 +1556,19 @@ function reviewDecision(action) {
   const productName = productNames[e.product] || e.product;
   const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(addr => addr !== currentUser.email).join('; ');
 
+  // Update status in log immediately
+  if (action === 'approved' || action === 'declined') {
+    e.status = action;
+    e.decidedBy = currentUser.name;
+    e.decidedByEmail = currentUser.email;
+    e.decidedDate = new Date().toISOString().split('T')[0];
+    saveExceptionLog(log);
+  }
+
+  // Build email content
   let subject, body;
 
   if (action === 'approved') {
-    e.status = 'approved';
     subject = 'APPROVED: Pricing Exception - ' + e.client + ' - ' + productName + ' - ' + e.placements + ' placements';
     body = 'Hi ' + repName + ',\n\n';
     body += 'Your pricing exception request has been APPROVED.\n\n';
@@ -1599,7 +1583,6 @@ function reviewDecision(action) {
     if (notes) body += '\nNotes: ' + notes + '\n';
     body += '\nApproved by: ' + currentUser.name + '\n\nThank you.';
   } else if (action === 'declined') {
-    e.status = 'declined';
     subject = 'DECLINED: Pricing Exception - ' + e.client + ' - ' + productName + ' - ' + e.placements + ' placements';
     body = 'Hi ' + repName + ',\n\n';
     body += 'Your pricing exception request has been DECLINED.\n\n';
@@ -1621,29 +1604,52 @@ function reviewDecision(action) {
     body += 'Thank you,\n' + currentUser.name;
   }
 
-  // Update log for approve/decline
-  if (action === 'approved' || action === 'declined') {
-    e.decidedBy = currentUser.name;
-    e.decidedByEmail = currentUser.email;
-    e.decidedDate = new Date().toISOString().split('T')[0];
-    saveExceptionLog(log);
-  }
+  // Hide action buttons, show result
+  document.getElementById('reviewBtnGroup').style.display = 'none';
 
-  document.getElementById('reviewEmailTo').textContent = e.rep;
-  document.getElementById('reviewEmailCc').textContent = cc;
-  document.getElementById('reviewEmailSubject').textContent = subject;
-  document.getElementById('reviewEmailBody').textContent = body;
-  document.getElementById('reviewEmailOutput').style.display = 'block';
+  const statusLabels = { approved: 'APPROVED', declined: 'DECLINED', info: 'More Info Requested' };
+  const statusColors = { approved: '#4ade80', declined: '#f87171', info: '#60a5fa' };
+  const repDisplayName = repPerson ? repPerson.name : e.rep;
+  const escapedBody = body.replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-  // Refresh the pending list
+  document.getElementById('reviewResult').innerHTML =
+    '<div style="text-align:center;padding:20px 0 12px;">' +
+      '<div style="font-size:24px;font-weight:700;color:' + statusColors[action] + ';margin-bottom:8px;">' + statusLabels[action] + '</div>' +
+      '<div style="color:#999;font-size:14px;">' + e.client + ' — ' + productName + ' — ' + e.placements + ' placements</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:12px;justify-content:center;margin:16px 0;">' +
+      '<button class="btn btn-gold" onclick="document.getElementById(\'reviewEmailInner\').style.display=\'block\'">Send Email Notification to ' + repDisplayName + '</button>' +
+      '<button class="btn btn-outline" onclick="closeReviewPanel()">Done</button>' +
+    '</div>' +
+    '<div id="reviewEmailInner" style="display:none; margin-top:16px;">' +
+      '<div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:20px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:12px;color:#999;text-transform:uppercase;">To</span><button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px;" onclick="copyField(\'rvTo\')">Copy</button></div>' +
+        '<div id="rvTo" style="color:#e0e0e0;font-size:14px;margin-bottom:16px;padding:8px 12px;background:#16213e;border-radius:6px;user-select:all;">' + e.rep + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:12px;color:#999;text-transform:uppercase;">CC</span><button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px;" onclick="copyField(\'rvCc\')">Copy</button></div>' +
+        '<div id="rvCc" style="color:#e0e0e0;font-size:14px;margin-bottom:16px;padding:8px 12px;background:#16213e;border-radius:6px;user-select:all;">' + cc + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:12px;color:#999;text-transform:uppercase;">Subject</span><button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px;" onclick="copyField(\'rvSubj\')">Copy</button></div>' +
+        '<div id="rvSubj" style="color:#e0e0e0;font-size:14px;margin-bottom:16px;padding:8px 12px;background:#16213e;border-radius:6px;user-select:all;">' + subject + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:12px;color:#999;text-transform:uppercase;">Body</span><button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px;" onclick="copyField(\'rvBody\')">Copy</button></div>' +
+        '<pre id="rvBody" style="color:#e0e0e0;font-size:13px;padding:12px;background:#16213e;border-radius:6px;white-space:pre-wrap;word-wrap:break-word;user-select:all;font-family:inherit;line-height:1.6;">' + escapedBody + '</pre>' +
+        '<div style="margin-top:16px;"><button class="btn btn-gold" onclick="copyAllRv()">Copy All to Clipboard</button></div>' +
+      '</div>' +
+    '</div>';
+
   renderReviewTab();
 }
 
-function copyAllReview() {
-  const to = document.getElementById('reviewEmailTo').textContent;
-  const cc = document.getElementById('reviewEmailCc').textContent;
-  const subject = document.getElementById('reviewEmailSubject').textContent;
-  const body = document.getElementById('reviewEmailBody').textContent;
+function closeReviewPanel() {
+  document.getElementById('reviewActionPanel').style.display = 'none';
+  document.getElementById('reviewResult').innerHTML = '';
+  document.getElementById('reviewBtnGroup').style.display = 'flex';
+  selectedReviewId = null;
+}
+
+function copyAllRv() {
+  const to = document.getElementById('rvTo').textContent;
+  const cc = document.getElementById('rvCc').textContent;
+  const subject = document.getElementById('rvSubj').textContent;
+  const body = document.getElementById('rvBody').textContent;
   const all = 'To: ' + to + '\nCC: ' + cc + '\nSubject: ' + subject + '\n\n' + body;
   navigator.clipboard.writeText(all).then(() => {
     const btn = event.target;
