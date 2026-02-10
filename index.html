@@ -800,6 +800,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
                 <th>Requested $</th>
                 <th>Discount $</th>
                 <th>Status</th>
+                <th>Decided By</th>
                 <th></th>
               </tr>
             </thead>
@@ -1396,11 +1397,18 @@ function addLogEntry() {
   }
 
   const log = getExceptionLog();
-  log.push({
+  const entry = {
     id: Date.now(),
     date, rep, repName, client, product, term, placements,
-    ratecard, requested, status
-  });
+    ratecard, requested, status,
+    decidedBy: null, decidedByEmail: null, decidedDate: null
+  };
+  if (status !== 'pending') {
+    entry.decidedBy = currentUser.name;
+    entry.decidedByEmail = currentUser.email;
+    entry.decidedDate = date;
+  }
+  log.push(entry);
   saveExceptionLog(log);
 
   // Reset form
@@ -1422,9 +1430,64 @@ function deleteLogEntry(id) {
 function updateLogStatus(id, newStatus) {
   const log = getExceptionLog();
   const entry = log.find(e => e.id === id);
-  if (entry) entry.status = newStatus;
+  if (!entry) return;
+
+  const oldStatus = entry.status;
+  entry.status = newStatus;
+
+  // Record who made the decision
+  if (newStatus === 'approved' || newStatus === 'declined') {
+    entry.decidedBy = currentUser.name;
+    entry.decidedByEmail = currentUser.email;
+    entry.decidedDate = new Date().toISOString().split('T')[0];
+  } else {
+    entry.decidedBy = null;
+    entry.decidedByEmail = null;
+    entry.decidedDate = null;
+  }
+
   saveExceptionLog(log);
   renderAdminDashboard();
+
+  // Generate mailto to sales rep if status changed to approved/declined
+  if ((newStatus === 'approved' || newStatus === 'declined') && newStatus !== oldStatus) {
+    const productNames = { addon: 'Add-On Spotlight', standalone: 'Standalone Spotlight' };
+    const productName = productNames[entry.product] || entry.product;
+    const statusUpper = newStatus.toUpperCase();
+
+    const subject = statusUpper + ': Exception Request - ' + entry.client + ' - ' + productName + ' - ' + entry.placements + ' placements';
+
+    let body = 'Hi ' + (entry.repName || '').split(' ')[0] + ',\n\n';
+    body += 'Your exception pricing request has been ' + statusUpper + '.\n\n';
+    body += '--- REQUEST DETAILS ---\n';
+    body += 'Client: ' + entry.client + '\n';
+    body += 'Product: ' + productName + '\n';
+    body += 'Term: ' + entry.term + ' months\n';
+    body += 'Placements: ' + entry.placements + '\n';
+    body += 'Ratecard Price/Placement: ' + fmt(entry.ratecard) + '\n';
+    body += 'Requested Price/Placement: ' + fmt(entry.requested) + '\n';
+    const diff = entry.ratecard - entry.requested;
+    if (diff > 0) {
+      body += 'Total Discount: ' + fmt(diff * entry.placements * entry.term) + '\n';
+    }
+    body += '--- END ---\n\n';
+    if (newStatus === 'approved') {
+      body += 'You are approved to proceed with the pricing above.\n\n';
+    } else {
+      body += 'Please reach out if you have questions or would like to discuss alternatives.\n\n';
+    }
+    body += 'Decision by: ' + currentUser.name + '\n';
+    body += 'Date: ' + entry.decidedDate + '\n\n';
+    body += 'Thank you,\n' + currentUser.name;
+
+    const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(e => e !== currentUser.email).join(',');
+    const mailto = 'mailto:' + encodeURIComponent(entry.rep) +
+      '?cc=' + encodeURIComponent(cc) +
+      '&subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent(body);
+
+    window.open(mailto, '_self');
+  }
 }
 
 function populateMonthFilter() {
@@ -1502,6 +1565,7 @@ function renderAdminDashboard() {
         '<option value="approved"' + (e.status === 'approved' ? ' selected' : '') + '>Approved</option>' +
         '<option value="declined"' + (e.status === 'declined' ? ' selected' : '') + '>Declined</option>' +
       '</select></td>' +
+      '<td>' + (e.decidedBy ? e.decidedBy + '<br><span style="color:#666;font-size:11px;">' + (e.decidedDate || '') + '</span>' : '--') + '</td>' +
       '<td><button class="delete-btn" onclick="deleteLogEntry(' + e.id + ')" title="Delete">&#10005;</button></td>' +
     '</tr>';
   }).join('');
