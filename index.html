@@ -585,7 +585,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
         </div>
         <div class="control-group">
           <label>Number of Placements</label>
-          <select id="calcPlacements" onchange="updateCalculator()"></select>
+          <input type="number" id="calcPlacements" min="1" value="1" oninput="updateCalculator()">
         </div>
       </div>
 
@@ -648,7 +648,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           </div>
           <div class="form-group">
             <label>Number of Placements</label>
-            <select id="reqPlacements" onchange="updateRequestSummary()"></select>
+            <input type="number" id="reqPlacements" min="1" value="1" oninput="updateRequestSummary()">
           </div>
           <div class="form-group">
             <label>Requested Price / Placement (optional)</label>
@@ -1055,6 +1055,14 @@ function getTierRangeLabel(tiers, index) {
   return tier.placements + '-' + (next.placements - 1);
 }
 
+function findTierForCount(tiers, count) {
+  // Find the highest tier where placements <= count
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    if (count >= tiers[i].placements) return tiers[i];
+  }
+  return tiers[0];
+}
+
 
 function getAvailableTerms() {
   return isPrivileged() ? ALL_TERMS : SALES_TERMS;
@@ -1093,21 +1101,11 @@ function updateCalculator() {
   const productKey = document.getElementById('calcProduct').value;
   const termMonths = parseInt(document.getElementById('calcTerm').value);
   const product = PRODUCTS[productKey];
-
-  // Update placements dropdown if product changed
-  const calcPl = document.getElementById('calcPlacements');
-  const currentTiers = product.tiers.map(t => t.placements);
-  const optValues = Array.from(calcPl.options).map(o => parseInt(o.value));
-  if (JSON.stringify(currentTiers) !== JSON.stringify(optValues)) {
-    populatePlacementDropdown(calcPl, productKey);
-  }
-
-  // Find tier
-  const selPlacements = parseInt(document.getElementById('calcPlacements').value);
-  const tier = product.tiers.find(t => t.placements === selPlacements) || product.tiers[0];
+  const numPlacements = parseInt(document.getElementById('calcPlacements').value) || 1;
+  const tier = findTierForCount(product.tiers, numPlacements);
 
   const pricePerPlacement = getPrice(tier, termMonths);
-  const totalMonthly = pricePerPlacement * tier.placements;
+  const totalMonthly = pricePerPlacement * numPlacements;
   const totalTerm = totalMonthly * termMonths;
 
   document.getElementById('resPrice').textContent = fmt(pricePerPlacement);
@@ -1115,10 +1113,10 @@ function updateCalculator() {
   document.getElementById('resTotalSub').textContent = fmt(totalTerm) + ' total (' + termMonths + ' mo)';
   document.getElementById('resDiscount').textContent = tier.discount + '%';
 
-  buildRatecardTable(productKey, termMonths, tier.placements);
+  buildRatecardTable(productKey, termMonths, tier.placements, numPlacements);
 }
 
-function buildRatecardTable(productKey, selectedTerm, selectedPlacements) {
+function buildRatecardTable(productKey, selectedTerm, selectedTierPlacements) {
   const product = PRODUCTS[productKey];
   // Sales reps only see 6mo+ columns in the table; managers/admins see all
   const terms = isPrivileged() ? ALL_TERMS : SALES_TERMS;
@@ -1132,7 +1130,7 @@ function buildRatecardTable(productKey, selectedTerm, selectedPlacements) {
   html += '<th>Discount</th></tr></thead><tbody>';
 
   product.tiers.forEach((tier, i) => {
-    const isHighlighted = tier.placements === selectedPlacements;
+    const isHighlighted = tier.placements === selectedTierPlacements;
     const rangeLabel = getTierRangeLabel(product.tiers, i);
     html += '<tr class="' + (isHighlighted ? 'highlighted' : '') + '">';
     html += '<td>' + rangeLabel + '</td>';
@@ -1153,29 +1151,20 @@ function buildRatecardTable(productKey, selectedTerm, selectedPlacements) {
 function updateRequestSummary() {
   const productKey = document.getElementById('reqProduct').value;
   const product = PRODUCTS[productKey];
-
-  // Update placements dropdown
-  const reqPl = document.getElementById('reqPlacements');
-  const currentTiers = product.tiers.map(t => t.placements);
-  const optValues = Array.from(reqPl.options).map(o => parseInt(o.value));
-  if (JSON.stringify(currentTiers) !== JSON.stringify(optValues)) {
-    populatePlacementDropdown(reqPl, productKey);
-  }
-
   const termMonths = parseInt(document.getElementById('reqTerm').value);
-  const placements = parseInt(document.getElementById('reqPlacements').value);
-  const tier = product.tiers.find(t => t.placements === placements) || product.tiers[0];
+  const numPlacements = parseInt(document.getElementById('reqPlacements').value) || 1;
+  const tier = findTierForCount(product.tiers, numPlacements);
   const ratecardPrice = getPrice(tier, termMonths);
   const customPrice = parseFloat(document.getElementById('reqCustomPrice').value);
   const priceUsed = isNaN(customPrice) || customPrice <= 0 ? ratecardPrice : customPrice;
-  const totalMonthly = priceUsed * tier.placements;
+  const totalMonthly = priceUsed * numPlacements;
   const totalTerm = totalMonthly * termMonths;
   const isShortTerm = termMonths < 6;
 
   let rows = '';
   rows += dealRow('Product', product.name);
   rows += dealRow('Term', termMonths + ' months' + (isShortTerm ? ' (requires approval)' : ''));
-  rows += dealRow('Placements', tier.placements);
+  rows += dealRow('Placements', numPlacements);
   rows += dealRow('Ratecard Price/Placement', fmt(ratecardPrice));
   if (!isNaN(customPrice) && customPrice > 0 && customPrice !== ratecardPrice) {
     rows += dealRow('Requested Price/Placement', fmt(customPrice));
@@ -1201,17 +1190,17 @@ function updateRequestMailto() {
   const productKey = document.getElementById('reqProduct').value;
   const product = PRODUCTS[productKey];
   const termMonths = parseInt(document.getElementById('reqTerm').value);
-  const placements = parseInt(document.getElementById('reqPlacements').value);
-  const tier = product.tiers.find(t => t.placements === placements) || product.tiers[0];
+  const numPlacements = parseInt(document.getElementById('reqPlacements').value) || 1;
+  const tier = findTierForCount(product.tiers, numPlacements);
   const ratecardPrice = getPrice(tier, termMonths);
   const customPrice = parseFloat(document.getElementById('reqCustomPrice').value);
   const priceUsed = isNaN(customPrice) || customPrice <= 0 ? ratecardPrice : customPrice;
   const notes = document.getElementById('reqNotes').value.trim();
-  const totalMonthly = priceUsed * tier.placements;
+  const totalMonthly = priceUsed * numPlacements;
   const totalTerm = totalMonthly * termMonths;
   const isShortTerm = termMonths < 6;
 
-  const subject = 'Pricing Approval Request: ' + client + ' - ' + product.name + ' - ' + placements + ' placements' + (isShortTerm ? ' (' + termMonths + 'mo exception)' : '');
+  const subject = 'Pricing Approval Request: ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements' + (isShortTerm ? ' (' + termMonths + 'mo exception)' : '');
 
   let body = 'Hi,\n\n';
   body += 'I\'d like to request pricing approval for the following deal:\n\n';
@@ -1221,7 +1210,7 @@ function updateRequestMailto() {
   body += 'Sales Rep: ' + currentUser.name + ' (' + currentUser.email + ')\n';
   body += 'Product: ' + product.name + '\n';
   body += 'Term: ' + termMonths + ' months' + (isShortTerm ? ' (SHORT TERM - requires approval)' : '') + '\n';
-  body += 'Placements: ' + placements + '\n';
+  body += 'Placements: ' + numPlacements + '\n';
   body += 'Ratecard Price/Placement: ' + fmt(ratecardPrice) + '\n';
   if (!isNaN(customPrice) && customPrice > 0 && customPrice !== ratecardPrice) {
     body += 'Requested Price/Placement: ' + fmt(customPrice) + '\n';
@@ -1257,7 +1246,7 @@ function updateManagerMailtos() {
   const productKey = document.getElementById('reqProduct').value;
   const product = PRODUCTS[productKey];
   const termMonths = parseInt(document.getElementById('reqTerm').value);
-  const placements = parseInt(document.getElementById('reqPlacements').value);
+  const placements = parseInt(document.getElementById('reqPlacements').value) || 1;
   const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join(',');
 
   // Approve
@@ -1307,11 +1296,9 @@ function updateManagerMailtos() {
 function initApp() {
   // Pricing calculator: sales reps see 6mo+ only; managers see all
   populateTermDropdown(document.getElementById('calcTerm'), false, false);
-  populatePlacementDropdown(document.getElementById('calcPlacements'), 'addon');
 
   // Request form: ALL terms available, plain labels (no % shown)
   populateTermDropdown(document.getElementById('reqTerm'), true, true);
-  populatePlacementDropdown(document.getElementById('reqPlacements'), 'addon');
 
   updateCalculator();
   updateRequestSummary();
