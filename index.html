@@ -268,6 +268,9 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
 
 /* ===== REQUEST FORM ===== */
 .request-section {
+  max-width: 100%;
+}
+.request-form-grid {
   max-width: 640px;
 }
 .form-grid {
@@ -621,9 +624,11 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
     <div class="tab-content" id="tab-request">
 
       <div class="request-section">
-        <h2 style="color:#c9a84c; margin-bottom:20px;">Request Pricing Approval</h2>
 
-        <div class="form-grid">
+        <div id="requestFormSection">
+        <h2 style="color:#c9a84c; margin-bottom:20px;">Request Pricing Exception</h2>
+
+        <div class="form-grid request-form-grid">
           <div class="form-group">
             <label>Client Name</label>
             <input type="text" id="reqClient" placeholder="e.g. Acme Realty">
@@ -702,7 +707,9 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           </div>
         </div>
 
-        <!-- My Requests (visible to sales reps) -->
+        </div><!-- end requestFormSection -->
+
+        <!-- My Requests -->
         <div class="admin-section" id="myRequestsSection" style="display:none; margin-top:24px;">
           <h3>My Submitted Requests</h3>
           <div style="overflow-x:auto;">
@@ -1119,6 +1126,7 @@ authSubmit.addEventListener('click', () => {
 
   // Show/hide tabs based on role
   document.getElementById('requestTabBtn').style.display = person.role === 'sales' ? 'inline-block' : 'none';
+  document.getElementById('requestFormSection').style.display = person.role === 'sales' ? 'block' : 'none';
   document.getElementById('reviewTabBtn').style.display = isPrivileged() ? 'inline-block' : 'none';
   document.getElementById('adminTabBtn').style.display = person.role === 'admin' ? 'inline-block' : 'none';
 
