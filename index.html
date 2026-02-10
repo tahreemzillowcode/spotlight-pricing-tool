@@ -666,8 +666,9 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
         </div>
 
         <div class="btn-group">
-          <a class="btn btn-gold" id="requestMailto" href="#">Request Pricing Approval</a>
+          <button class="btn btn-gold" id="requestSlackBtn" onclick="sendSlackNotification()">Send Exception Request</button>
         </div>
+        <div id="slackStatus" style="margin-top:12px;font-size:13px;display:none;"></div>
 
         <!-- Manager Approval Section -->
         <div class="manager-review" id="managerReview" style="display:none;">
@@ -822,6 +823,13 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
 const PM_EMAIL = 'tahreemz@zillowgroup.com';
 const SALES_DIRECTOR_EMAIL = 'kenh@zillowgroup.com';
 const MANAGER_PASSCODE = 'spotlight2024';
+
+// Slack incoming webhook URL for the managers/admins channel
+// To set up: Slack > Apps > Incoming Webhooks > Add to channel > copy URL
+const SLACK_WEBHOOK_URL = 'PASTE_YOUR_SLACK_WEBHOOK_URL_HERE';
+
+// Link to the pricing tool for reviewers
+const TOOL_URL = 'https://tahreemzillowcode.github.io/spotlight-pricing-tool/';
 
 // =============================================
 // TEAM ROSTER
@@ -1175,17 +1183,14 @@ function updateRequestSummary() {
   rows += '<div class="deal-row"><span class="dl">Total (' + termMonths + ' mo)</span><span class="dv">' + fmt(totalTerm) + '</span></div>';
 
   document.getElementById('dealRows').innerHTML = rows;
-
-  updateRequestMailto();
 }
 
 function dealRow(label, value) {
   return '<div class="deal-row"><span class="dl">' + label + '</span><span class="dv">' + value + '</span></div>';
 }
 
-function updateRequestMailto() {
-  const client = document.getElementById('reqClient').value.trim() || '[Client]';
-  const managerEmail = document.getElementById('reqManager').value.trim();
+function sendSlackNotification() {
+  const client = document.getElementById('reqClient').value.trim();
   const sfLink = document.getElementById('reqSfLink').value.trim();
   const productKey = document.getElementById('reqProduct').value;
   const product = PRODUCTS[productKey];
@@ -1200,20 +1205,110 @@ function updateRequestMailto() {
   const totalTerm = totalMonthly * termMonths;
   const isShortTerm = termMonths < 6;
 
-  const subject = 'New Exception Request from ' + currentUser.name + ' - ' + client;
+  if (!client) {
+    alert('Please enter a client name.');
+    return;
+  }
 
-  let body = 'Hi,\n\n';
-  body += currentUser.name + ' has submitted a pricing exception request for ' + client + '.\n\n';
-  body += 'Please review the request in the Spotlight Pricing Tool.\n\n';
-  body += 'Thank you.';
+  if (!SLACK_WEBHOOK_URL || SLACK_WEBHOOK_URL === 'PASTE_YOUR_SLACK_WEBHOOK_URL_HERE') {
+    alert('Slack webhook URL not configured. Please contact your admin.');
+    return;
+  }
 
-  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join(',');
-  const mailto = 'mailto:' + encodeURIComponent(managerEmail) +
-    '?cc=' + encodeURIComponent(cc) +
-    '&subject=' + encodeURIComponent(subject) +
-    '&body=' + encodeURIComponent(body);
+  const statusEl = document.getElementById('slackStatus');
+  const btn = document.getElementById('requestSlackBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  statusEl.style.display = 'none';
 
-  document.getElementById('requestMailto').href = mailto;
+  // Build Slack message with Block Kit
+  const blocks = [
+    {
+      type: 'header',
+      text: { type: 'plain_text', text: 'New Exception Request' }
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '*' + currentUser.name + '* has submitted a pricing exception request.'
+      }
+    },
+    { type: 'divider' },
+    {
+      type: 'section',
+      fields: [
+        { type: 'mrkdwn', text: '*Client:*\n' + client },
+        { type: 'mrkdwn', text: '*Product:*\n' + product.name },
+        { type: 'mrkdwn', text: '*Term:*\n' + termMonths + ' months' + (isShortTerm ? ' (short term)' : '') },
+        { type: 'mrkdwn', text: '*Placements:*\n' + numPlacements },
+        { type: 'mrkdwn', text: '*Ratecard Price/Placement:*\n' + fmt(ratecardPrice) },
+        { type: 'mrkdwn', text: '*Requested Price/Placement:*\n' + fmt(priceUsed) },
+        { type: 'mrkdwn', text: '*Total Monthly:*\n' + fmt(totalMonthly) },
+        { type: 'mrkdwn', text: '*Total (' + termMonths + ' mo):*\n' + fmt(totalTerm) },
+        { type: 'mrkdwn', text: '*Volume Discount Tier:*\n' + tier.discount + '%' }
+      ]
+    }
+  ];
+
+  if (sfLink) {
+    blocks.push({
+      type: 'section',
+      text: { type: 'mrkdwn', text: '*Salesforce Account:* <' + sfLink + '|View in Salesforce>' }
+    });
+  }
+
+  if (notes) {
+    blocks.push({
+      type: 'section',
+      text: { type: 'mrkdwn', text: '*Business Case:*\n' + notes }
+    });
+  }
+
+  blocks.push({ type: 'divider' });
+  blocks.push({
+    type: 'actions',
+    elements: [
+      {
+        type: 'button',
+        text: { type: 'plain_text', text: 'Review in Pricing Tool' },
+        url: TOOL_URL,
+        style: 'primary'
+      }
+    ]
+  });
+
+  const payload = {
+    text: 'New Exception Request from ' + currentUser.name + ' for ' + client,
+    blocks: blocks
+  };
+
+  fetch(SLACK_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (res.ok) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = '#4ade80';
+      statusEl.textContent = 'Notification sent to Slack channel.';
+      btn.textContent = 'Sent!';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Send Exception Request';
+      }, 3000);
+    } else {
+      throw new Error('Slack returned ' + res.status);
+    }
+  })
+  .catch(err => {
+    statusEl.style.display = 'block';
+    statusEl.style.color = '#f87171';
+    statusEl.textContent = 'Failed to send: ' + err.message + '. Check webhook URL.';
+    btn.disabled = false;
+    btn.textContent = 'Send Exception Request';
+  });
 }
 
 // =============================================
