@@ -350,6 +350,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
 .btn-green { background: #22c55e; color: #fff; }
 .btn-red { background: #ef4444; color: #fff; }
 .btn-blue { background: #3b82f6; color: #fff; }
+.btn-orange { background: #f97316; color: #fff; }
 .btn-outline {
   background: none;
   border: 1px solid #555;
@@ -440,6 +441,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
 .status-pill.approved { background: #22c55e22; color: #4ade80; }
 .status-pill.declined { background: #ef444422; color: #f87171; }
 .status-pill.pending { background: #eab30822; color: #fbbf24; }
+.status-pill.countered { background: #f9731622; color: #fb923c; border: 1px solid #f9731655; }
 .admin-log-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -710,6 +712,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
                   <th>Ratecard $</th>
                   <th>Requested $</th>
                   <th>Status</th>
+                  <th>Counter Offer</th>
                   <th>Decided By</th>
                 </tr>
               </thead>
@@ -762,7 +765,39 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           <div class="btn-group" id="reviewBtnGroup">
             <button class="btn btn-green" onclick="reviewDecision('approved')">Approve</button>
             <button class="btn btn-red" onclick="reviewDecision('declined')">Decline</button>
+            <button class="btn btn-orange" onclick="showCounterForm()">Counter</button>
             <button class="btn btn-blue" onclick="reviewDecision('info')">Request More Info</button>
+          </div>
+          <div id="counterFormPanel" style="display:none; margin-top:16px; background:#0f1729; border:1px solid #f9731633; border-radius:10px; padding:20px;">
+            <h4 style="color:#fb923c; font-size:14px; margin-bottom:12px;">Counter Offer Details</h4>
+            <div class="form-grid" style="max-width:100%;">
+              <div class="form-group">
+                <label>Counter Price / Placement</label>
+                <input type="number" id="counterPrice" step="0.01" placeholder="0.00">
+              </div>
+              <div class="form-group">
+                <label>Counter Term</label>
+                <select id="counterTerm">
+                  <option value="1">1 mo</option>
+                  <option value="3">3 mo</option>
+                  <option value="6">6 mo</option>
+                  <option value="9">9 mo</option>
+                  <option value="12">12 mo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Counter Placements</label>
+                <input type="number" id="counterPlacements" min="1" value="1">
+              </div>
+              <div class="form-group full-width">
+                <label>Counter Notes (reason for counter)</label>
+                <textarea id="counterNotes" placeholder="Explain why you're countering..."></textarea>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-orange" onclick="reviewDecision('countered')">Submit Counter Offer</button>
+              <button class="btn btn-outline" onclick="hideCounterForm()">Cancel</button>
+            </div>
           </div>
           <div id="reviewResult"></div>
         </div>
@@ -780,6 +815,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
                   <th>Term</th>
                   <th>Placements</th>
                   <th>Status</th>
+                  <th>Counter Offer</th>
                   <th>Decided By</th>
                 </tr>
               </thead>
@@ -820,6 +856,10 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
         <div class="stat-card">
           <div class="stat-value" id="statPending">0</div>
           <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statCountered">0</div>
+          <div class="stat-label">Countered</div>
         </div>
         <div class="stat-card">
           <div class="stat-value" id="statDiscountTotal">$0</div>
@@ -877,6 +917,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="declined">Declined</option>
+              <option value="countered">Countered</option>
             </select>
           </div>
           <div class="form-group">
@@ -900,6 +941,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
                 <th>Ratecard $</th>
                 <th>Requested $</th>
                 <th>Discount $</th>
+                <th>Counter $</th>
                 <th>Status</th>
                 <th>Decided By</th>
                 <th></th>
@@ -961,20 +1003,16 @@ const TEAM = [
   { name: 'Judie Main',        email: 'judiem@zillowgroup.com',     role: 'sales', manager: 'jessicage@zillowgroup.com' },
   { name: 'Madi Cox',          email: 'madic@zillowgroup.com',      role: 'sales', manager: 'jessicage@zillowgroup.com' },
   { name: 'Rashaad Cureton',   email: 'rashaadc@zillowgroup.com',   role: 'sales', manager: 'jessicage@zillowgroup.com' },
-  { name: 'Solomon Lamar',     email: 'solomonl@zillowgroup.com',   role: 'sales', manager: 'jessicage@zillowgroup.com' }
+  { name: 'Solomon Lamar',     email: 'solomonl@zillowgroup.com',   role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  // Ken Hoffman's direct reports (Enterprise Sales)
+  { name: 'Richard Phan',      email: 'richardph@zillowgroup.com',  role: 'sales', manager: 'kenh@zillowgroup.com' },
+  { name: 'Edward Cornelius',   email: 'edwardc@zillowgroup.com',   role: 'sales', manager: 'kenh@zillowgroup.com' },
+  { name: 'Eric St. Cashen',    email: 'ericsc@zillowgroup.com',    role: 'sales', manager: 'kenh@zillowgroup.com' }
 ];
 
 // =============================================
 // RATECARD DATA
 // =============================================
-const TERM_MULTIPLIERS = {
-  1:  1.20,
-  3:  1.10,
-  6:  1.05,
-  9:  1.025,
-  12: 1.00
-};
-
 // Labels with premium % — only managers see the % on short terms
 const TERM_LABELS_FULL = {
   1:  '1 mo (+20%)',
@@ -1006,6 +1044,10 @@ function isPrivileged() {
   return currentUser.role === 'manager' || currentUser.role === 'admin';
 }
 
+function isEnterprise() {
+  return currentUser.role === 'sales' && currentUser.manager === 'kenh@zillowgroup.com';
+}
+
 function getTermLabel(t) {
   if (isPrivileged()) return TERM_LABELS_FULL[t];
   return TERM_LABELS_SHORT[t];
@@ -1015,28 +1057,30 @@ const PRODUCTS = {
   addon: {
     name: 'Add-On Spotlight',
     tiers: [
-      { placements: 1,   price12mo: 221.85, discount: 0  },
-      { placements: 2,   price12mo: 195.45, discount: 12 },
-      { placements: 10,  price12mo: 186.35, discount: 16 },
-      { placements: 20,  price12mo: 177.48, discount: 20 },
-      { placements: 50,  price12mo: 169.72, discount: 24 },
-      { placements: 100, price12mo: 165.00, discount: 26 },
-      { placements: 150, price12mo: 155.29, discount: 30 }
+      { placements: 1,   prices: { 1: 272, 3: 250, 6: 238, 9: 233, 12: 227 }, discount: 0  },
+      { placements: 5,   prices: { 1: 259, 3: 238, 6: 227, 9: 221, 12: 216 }, discount: 5  },
+      { placements: 10,  prices: { 1: 246, 3: 226, 6: 215, 9: 210, 12: 205 }, discount: 10 },
+      { placements: 20,  prices: { 1: 232, 3: 212, 6: 203, 9: 198, 12: 193 }, discount: 15 },
+      { placements: 100, prices: { 1: 204, 3: 187, 6: 178, 9: 174, 12: 170 }, discount: 25 },
+      { placements: 200, prices: { 1: 191, 3: 175, 6: 167, 9: 163, 12: 159 }, discount: 30 },
+      { placements: 300, prices: { 1: 172, 3: 157, 6: 150, 9: 147, 12: 143 }, discount: 37 },
+      { placements: 400, prices: { 1: 144, 3: 132, 6: 126, 9: 123, 12: 120 }, discount: 47 }
     ]
   },
   standalone: {
     name: 'Standalone Spotlight',
     tiers: [
-      { placements: 1,  price12mo: 261.00, discount: 0  },
-      { placements: 2,  price12mo: 230.00, discount: 12 },
-      { placements: 10, price12mo: 219.24, discount: 16 },
-      { placements: 20, price12mo: 208.80, discount: 20 }
+      { placements: 1,  prices: { 1: 313, 3: 287, 6: 274, 9: 268, 12: 261 }, discount: 0  },
+      { placements: 5,  prices: { 1: 298, 3: 273, 6: 260, 9: 254, 12: 248 }, discount: 5  },
+      { placements: 10, prices: { 1: 282, 3: 258, 6: 247, 9: 241, 12: 235 }, discount: 10 },
+      { placements: 20, prices: { 1: 266, 3: 244, 6: 233, 9: 228, 12: 222 }, discount: 15 }
     ]
   }
 };
 
-// Terms visible to sales reps in the pricing calculator (6mo+). Managers see all.
+// Terms visible by role
 const SALES_TERMS = [6, 9, 12];
+const ENTERPRISE_TERMS = [3, 6, 9, 12];
 const ALL_TERMS = [1, 3, 6, 9, 12];
 
 // =============================================
@@ -1160,7 +1204,7 @@ function fmt(n) {
 }
 
 function getPrice(tier, termMonths) {
-  return +(tier.price12mo * TERM_MULTIPLIERS[termMonths]).toFixed(2);
+  return tier.prices[termMonths];
 }
 
 function getTierRangeLabel(tiers, index) {
@@ -1181,7 +1225,9 @@ function findTierForCount(tiers, count) {
 
 
 function getAvailableTerms() {
-  return isPrivileged() ? ALL_TERMS : SALES_TERMS;
+  if (isPrivileged()) return ALL_TERMS;
+  if (isEnterprise()) return ENTERPRISE_TERMS;
+  return SALES_TERMS;
 }
 
 // =============================================
@@ -1234,8 +1280,7 @@ function updateCalculator() {
 
 function buildRatecardTable(productKey, selectedTerm, selectedTierPlacements) {
   const product = PRODUCTS[productKey];
-  // Sales reps only see 6mo+ columns in the table; managers/admins see all
-  const terms = isPrivileged() ? ALL_TERMS : SALES_TERMS;
+  const terms = getAvailableTerms();
 
   document.getElementById('tableTitle').textContent = product.name + ' — Full Ratecard';
 
@@ -1421,8 +1466,12 @@ function renderMyRequests() {
     const statusColors = {
       pending: 'color:#fbbf24;',
       approved: 'color:#4ade80;',
-      declined: 'color:#f87171;'
+      declined: 'color:#f87171;',
+      countered: 'color:#fb923c;'
     };
+    const counterCell = e.status === 'countered'
+      ? fmt(e.counterPrice) + '/pl<br>' + e.counterTerm + 'mo, ' + e.counterPlacements + ' pl' + (e.counterNotes ? '<br><span style="color:#888;font-size:11px;">' + e.counterNotes + '</span>' : '')
+      : '--';
     return '<tr>' +
       '<td>' + e.date + '</td>' +
       '<td>' + e.client + '</td>' +
@@ -1432,6 +1481,7 @@ function renderMyRequests() {
       '<td>' + fmt(e.ratecard) + '</td>' +
       '<td>' + fmt(e.requested) + '</td>' +
       '<td style="font-weight:600;' + (statusColors[e.status] || '') + '">' + (e.status || 'pending').toUpperCase() + '</td>' +
+      '<td>' + counterCell + '</td>' +
       '<td>' + (e.decidedBy ? e.decidedBy + '<br><span style="color:#666;font-size:11px;">' + (e.decidedDate || '') + '</span>' : '--') + '</td>' +
     '</tr>';
   }).join('');
@@ -1446,7 +1496,7 @@ function renderReviewTab() {
   const log = getExceptionLog();
   const productNames = { addon: 'Add-On', standalone: 'Standalone' };
   const pending = log.filter(e => e.status === 'pending');
-  const decided = log.filter(e => e.status === 'approved' || e.status === 'declined');
+  const decided = log.filter(e => e.status === 'approved' || e.status === 'declined' || e.status === 'countered');
 
   // Pending table
   const pendingBody = document.getElementById('reviewPendingBody');
@@ -1480,7 +1530,7 @@ function renderReviewTab() {
   } else {
     pastEmpty.style.display = 'none';
     pastBody.innerHTML = decided.sort((a, b) => b.date.localeCompare(a.date)).map(e => {
-      const statusColors = { approved: 'color:#4ade80;', declined: 'color:#f87171;' };
+      const statusColors = { approved: 'color:#4ade80;', declined: 'color:#f87171;', countered: 'color:#fb923c;' };
       return '<tr>' +
         '<td>' + e.date + '</td>' +
         '<td>' + (e.repName || e.rep) + '</td>' +
@@ -1489,6 +1539,7 @@ function renderReviewTab() {
         '<td>' + e.term + ' mo</td>' +
         '<td>' + e.placements + '</td>' +
         '<td style="font-weight:600;' + (statusColors[e.status] || '') + '">' + e.status.toUpperCase() + '</td>' +
+        '<td>' + (e.status === 'countered' ? fmt(e.counterPrice) + '/pl, ' + e.counterTerm + 'mo, ' + e.counterPlacements + 'pl' : '--') + '</td>' +
         '<td>' + (e.decidedBy || '--') + '</td>' +
       '</tr>';
     }).join('');
@@ -1526,6 +1577,27 @@ function selectForReview(id) {
   document.getElementById('reviewResult').innerHTML = '';
   document.getElementById('reviewNotes').value = '';
   document.getElementById('reviewActionPanel').scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('counterFormPanel').style.display = 'none';
+}
+
+function showCounterForm() {
+  if (!selectedReviewId) return;
+  const log = getExceptionLog();
+  const e = log.find(x => x.id === selectedReviewId);
+  if (!e) return;
+
+  document.getElementById('counterPrice').value = e.requested;
+  document.getElementById('counterPlacements').value = e.placements;
+  document.getElementById('counterTerm').value = e.term;
+  document.getElementById('counterNotes').value = '';
+
+  document.getElementById('reviewBtnGroup').style.display = 'none';
+  document.getElementById('counterFormPanel').style.display = 'block';
+}
+
+function hideCounterForm() {
+  document.getElementById('counterFormPanel').style.display = 'none';
+  document.getElementById('reviewBtnGroup').style.display = 'flex';
 }
 
 function reviewDecision(action) {
@@ -1542,11 +1614,19 @@ function reviewDecision(action) {
   const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(addr => addr !== currentUser.email).join('; ');
 
   // Update status in log immediately
-  if (action === 'approved' || action === 'declined') {
+  if (action === 'approved' || action === 'declined' || action === 'countered') {
     e.status = action;
     e.decidedBy = currentUser.name;
     e.decidedByEmail = currentUser.email;
     e.decidedDate = new Date().toISOString().split('T')[0];
+
+    if (action === 'countered') {
+      e.counterPrice = parseFloat(document.getElementById('counterPrice').value) || e.requested;
+      e.counterTerm = parseInt(document.getElementById('counterTerm').value) || e.term;
+      e.counterPlacements = parseInt(document.getElementById('counterPlacements').value) || e.placements;
+      e.counterNotes = document.getElementById('counterNotes').value.trim();
+    }
+
     saveExceptionLog(log);
   }
 
@@ -1580,6 +1660,25 @@ function reviewDecision(action) {
     if (notes) body += '\nReason: ' + notes + '\n';
     body += '\nPlease reach out if you have questions.\n';
     body += '\nDeclined by: ' + currentUser.name;
+  } else if (action === 'countered') {
+    subject = 'COUNTER OFFER: Pricing Exception - ' + e.client + ' - ' + productName + ' - ' + e.counterPlacements + ' placements';
+    body = 'Hi ' + repName + ',\n\n';
+    body += 'Your pricing exception request has received a COUNTER OFFER.\n\n';
+    body += '--- ORIGINAL REQUEST ---\n';
+    body += 'Client: ' + e.client + '\n';
+    body += 'Product: ' + productName + '\n';
+    body += 'Term: ' + e.term + ' months\n';
+    body += 'Placements: ' + e.placements + '\n';
+    body += 'Requested Price/Placement: ' + fmt(e.requested) + '\n';
+    body += '--- COUNTER OFFER ---\n';
+    body += 'Counter Price/Placement: ' + fmt(e.counterPrice) + '\n';
+    body += 'Counter Term: ' + e.counterTerm + ' months\n';
+    body += 'Counter Placements: ' + e.counterPlacements + '\n';
+    if (e.counterNotes) body += 'Reason: ' + e.counterNotes + '\n';
+    body += '--- END ---\n\n';
+    body += 'Please review the counter offer and reach out to discuss.\n';
+    if (notes) body += '\nAdditional Notes: ' + notes + '\n';
+    body += '\nCounter by: ' + currentUser.name + '\n\nThank you.';
   } else {
     subject = 'More Info Needed: Pricing Exception - ' + e.client;
     body = 'Hi ' + repName + ',\n\n';
@@ -1589,11 +1688,12 @@ function reviewDecision(action) {
     body += 'Thank you,\n' + currentUser.name;
   }
 
-  // Hide action buttons, show result
+  // Hide action buttons and counter form, show result
   document.getElementById('reviewBtnGroup').style.display = 'none';
+  document.getElementById('counterFormPanel').style.display = 'none';
 
-  const statusLabels = { approved: 'APPROVED', declined: 'DECLINED', info: 'More Info Requested' };
-  const statusColors = { approved: '#4ade80', declined: '#f87171', info: '#60a5fa' };
+  const statusLabels = { approved: 'APPROVED', declined: 'DECLINED', countered: 'COUNTER OFFER', info: 'More Info Requested' };
+  const statusColors = { approved: '#4ade80', declined: '#f87171', countered: '#fb923c', info: '#60a5fa' };
   const repDisplayName = repPerson ? repPerson.name : e.rep;
   const escapedBody = body.replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
@@ -1787,7 +1887,7 @@ function updateLogStatus(id, newStatus) {
   entry.status = newStatus;
 
   // Record who made the decision
-  if (newStatus === 'approved' || newStatus === 'declined') {
+  if (newStatus === 'approved' || newStatus === 'declined' || newStatus === 'countered') {
     entry.decidedBy = currentUser.name;
     entry.decidedByEmail = currentUser.email;
     entry.decidedDate = new Date().toISOString().split('T')[0];
@@ -1800,8 +1900,8 @@ function updateLogStatus(id, newStatus) {
   saveExceptionLog(log);
   renderAdminDashboard();
 
-  // Generate mailto to sales rep if status changed to approved/declined
-  if ((newStatus === 'approved' || newStatus === 'declined') && newStatus !== oldStatus) {
+  // Generate mailto to sales rep if status changed to approved/declined/countered
+  if ((newStatus === 'approved' || newStatus === 'declined' || newStatus === 'countered') && newStatus !== oldStatus) {
     const productNames = { addon: 'Add-On Spotlight', standalone: 'Standalone Spotlight' };
     const productName = productNames[entry.product] || entry.product;
     const statusUpper = newStatus.toUpperCase();
@@ -1824,6 +1924,13 @@ function updateLogStatus(id, newStatus) {
     body += '--- END ---\n\n';
     if (newStatus === 'approved') {
       body += 'You are approved to proceed with the pricing above.\n\n';
+    } else if (newStatus === 'countered') {
+      body += 'A counter offer has been submitted. Please review and discuss with your manager.\n';
+      if (entry.counterPrice) body += 'Counter Price/Placement: ' + fmt(entry.counterPrice) + '\n';
+      if (entry.counterTerm) body += 'Counter Term: ' + entry.counterTerm + ' months\n';
+      if (entry.counterPlacements) body += 'Counter Placements: ' + entry.counterPlacements + '\n';
+      if (entry.counterNotes) body += 'Notes: ' + entry.counterNotes + '\n';
+      body += '\n';
     } else {
       body += 'Please reach out if you have questions or would like to discuss alternatives.\n\n';
     }
@@ -1872,6 +1979,7 @@ function renderAdminDashboard() {
   const approved = filtered.filter(e => e.status === 'approved').length;
   const declined = filtered.filter(e => e.status === 'declined').length;
   const pending = filtered.filter(e => e.status === 'pending').length;
+  const countered = filtered.filter(e => e.status === 'countered').length;
 
   // Total $ in approved discounts = sum of (ratecard - requested) * placements * term for approved entries
   let totalDiscount = 0;
@@ -1884,6 +1992,7 @@ function renderAdminDashboard() {
   document.getElementById('statApproved').textContent = approved;
   document.getElementById('statDeclined').textContent = declined;
   document.getElementById('statPending').textContent = pending;
+  document.getElementById('statCountered').textContent = countered;
   document.getElementById('statDiscountTotal').textContent = fmt(totalDiscount);
 
   // Table
@@ -1911,10 +2020,12 @@ function renderAdminDashboard() {
       '<td>' + fmt(e.ratecard) + '</td>' +
       '<td>' + fmt(e.requested) + '</td>' +
       '<td>' + (diff > 0 ? fmt(diff) : '--') + '</td>' +
+      '<td>' + (e.status === 'countered' ? fmt(e.counterPrice) + '/pl, ' + e.counterTerm + 'mo, ' + e.counterPlacements + 'pl' : '--') + '</td>' +
       '<td><select class="status-select" onchange="updateLogStatus(' + e.id + ', this.value)" style="background:#0f1729;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:4px 8px;font-size:12px;">' +
         '<option value="pending"' + (e.status === 'pending' ? ' selected' : '') + '>Pending</option>' +
         '<option value="approved"' + (e.status === 'approved' ? ' selected' : '') + '>Approved</option>' +
         '<option value="declined"' + (e.status === 'declined' ? ' selected' : '') + '>Declined</option>' +
+        '<option value="countered"' + (e.status === 'countered' ? ' selected' : '') + '>Countered</option>' +
       '</select></td>' +
       '<td>' + (e.decidedBy ? e.decidedBy + '<br><span style="color:#666;font-size:11px;">' + (e.decidedDate || '') + '</span>' : '--') + '</td>' +
       '<td><button class="delete-btn" onclick="deleteLogEntry(' + e.id + ')" title="Delete">&#10005;</button></td>' +
