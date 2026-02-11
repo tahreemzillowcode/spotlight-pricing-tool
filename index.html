@@ -967,6 +967,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
 const PM_EMAIL = 'tahreemz@zillowgroup.com';
 const SALES_DIRECTOR_EMAIL = 'kenh@zillowgroup.com';
 const MANAGER_PASSCODE = 'spotlight2024';
+const ENTERPRISE_PASSCODE = 'enterpriseup';
 
 // Link to the pricing tool for reviewers
 const TOOL_URL = 'https://tahreemzillowcode.github.io/spotlight-pricing-tool/';
@@ -1125,7 +1126,7 @@ authRole.addEventListener('change', () => {
   }
   populateNameDropdown(role);
   authNameDiv.style.display = 'block';
-  const needsPasscode = role === 'manager' || role === 'admin';
+  const needsPasscode = role === 'manager' || role === 'admin' || role === 'enterprise';
   managerPasscodeDiv.style.display = needsPasscode ? 'block' : 'none';
   authPasscode.value = '';
   validateAuth();
@@ -1139,7 +1140,7 @@ function validateAuth() {
   const role = authRole.value;
   const person = getSelectedPerson();
   if (!role || !person) { authSubmit.disabled = true; return; }
-  const needsPasscode = role === 'manager' || role === 'admin';
+  const needsPasscode = role === 'manager' || role === 'admin' || role === 'enterprise';
   authSubmit.disabled = needsPasscode && authPasscode.value.length === 0;
 }
 
@@ -1149,8 +1150,9 @@ authPasscode.addEventListener('input', validateAuth);
 authSubmit.addEventListener('click', () => {
   const person = getSelectedPerson();
   if (!person) return;
-  const needsPasscode = person.role === 'manager' || person.role === 'admin';
-  if (needsPasscode && authPasscode.value !== MANAGER_PASSCODE) {
+  const needsPasscode = person.role === 'manager' || person.role === 'admin' || person.role === 'enterprise';
+  const expectedPasscode = person.role === 'enterprise' ? ENTERPRISE_PASSCODE : MANAGER_PASSCODE;
+  if (needsPasscode && authPasscode.value !== expectedPasscode) {
     alert('Invalid passcode.');
     return;
   }
