@@ -806,7 +806,18 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
         </div>
 
         <div class="admin-section" style="margin-top:24px;">
-          <h3>Past Decisions</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0;">Past Decisions</h3>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label style="font-size:12px; color:#999;">Filter:</label>
+              <select id="pastDecisionFilter" onchange="renderReviewTab()" style="background:#0f1729;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:4px 8px;font-size:12px;">
+                <option value="all">All</option>
+                <option value="approved">Approved</option>
+                <option value="declined">Declined</option>
+                <option value="countered">Countered</option>
+              </select>
+            </div>
+          </div>
           <div style="overflow-x:auto;">
             <table class="admin-table" id="reviewPastTable">
               <thead>
@@ -1522,7 +1533,9 @@ function renderReviewTab() {
   const log = getExceptionLog();
   const productNames = { addon: 'Add-On', standalone: 'Standalone' };
   const pending = log.filter(e => e.status === 'pending');
-  const decided = log.filter(e => e.status === 'approved' || e.status === 'declined' || e.status === 'countered');
+  const allDecided = log.filter(e => e.status === 'approved' || e.status === 'declined' || e.status === 'countered');
+  const pastFilter = document.getElementById('pastDecisionFilter').value;
+  const decided = pastFilter === 'all' ? allDecided : allDecided.filter(e => e.status === pastFilter);
 
   // Pending table
   const pendingBody = document.getElementById('reviewPendingBody');
