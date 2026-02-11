@@ -591,7 +591,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           <label>Term Length</label>
           <select id="calcTerm" onchange="updateCalculator()"></select>
         </div>
-        <div class="control-group">
+        <div class="control-group" id="calcPlacementsGroup">
           <label>Number of Placements</label>
           <input type="number" id="calcPlacements" min="1" value="1" oninput="updateCalculator()">
         </div>
@@ -608,7 +608,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           <div class="value" id="resTotal">--</div>
           <div class="sub" id="resTotalSub"></div>
         </div>
-        <div class="result-card">
+        <div class="result-card" id="resDiscountCard">
           <div class="label">Volume Discount</div>
           <div class="value" id="resDiscount">--</div>
           <div class="sub">off list price</div>
@@ -1298,24 +1298,27 @@ function updateCalculator() {
 function buildRatecardTable(productKey, selectedTerm, selectedTierPlacements) {
   const product = PRODUCTS[productKey];
   const terms = getAvailableTerms();
+  const isRegularSales = currentUser.role === 'sales';
+  const tiers = isRegularSales ? [product.tiers[0]] : product.tiers;
 
-  document.getElementById('tableTitle').textContent = product.name + ' — Full Ratecard';
+  document.getElementById('tableTitle').textContent = product.name + ' — ' + (isRegularSales ? 'Ratecard' : 'Full Ratecard');
 
   let html = '<thead><tr><th>Placements</th>';
   terms.forEach(t => {
     html += '<th>' + getTermLabel(t) + '</th>';
   });
-  html += '<th>Discount</th></tr></thead><tbody>';
+  if (!isRegularSales) html += '<th>Discount</th>';
+  html += '</tr></thead><tbody>';
 
-  product.tiers.forEach((tier, i) => {
+  tiers.forEach((tier, i) => {
     const isHighlighted = tier.placements === selectedTierPlacements;
-    const rangeLabel = getTierRangeLabel(product.tiers, i);
+    const rangeLabel = isRegularSales ? '1' : getTierRangeLabel(product.tiers, i);
     html += '<tr class="' + (isHighlighted ? 'highlighted' : '') + '">';
     html += '<td>' + rangeLabel + '</td>';
     terms.forEach(t => {
       html += '<td>' + fmt(getPrice(tier, t)) + '</td>';
     });
-    html += '<td>' + tier.discount + '%</td>';
+    if (!isRegularSales) html += '<td>' + tier.discount + '%</td>';
     html += '</tr>';
   });
 
@@ -1766,6 +1769,12 @@ function copyAllRv() {
 function initApp() {
   // Pricing calculator: sales reps see 6mo+ only; managers see all
   populateTermDropdown(document.getElementById('calcTerm'), false, false);
+
+  // Regular sales: hide placements input and volume discount card
+  const isRegularSales = currentUser.role === 'sales';
+  document.getElementById('calcPlacementsGroup').style.display = isRegularSales ? 'none' : 'block';
+  document.getElementById('resDiscountCard').style.display = isRegularSales ? 'none' : 'block';
+  if (isRegularSales) document.getElementById('calcPlacements').value = 1;
 
   updateCalculator();
 
