@@ -1281,7 +1281,8 @@ function updateCalculator() {
   const termMonths = parseInt(document.getElementById('calcTerm').value);
   const product = PRODUCTS[productKey];
   const numPlacements = parseInt(document.getElementById('calcPlacements').value) || 1;
-  const tier = findTierForCount(product.tiers, numPlacements);
+  // Regular sales always use the 1-placement tier (no volume discounts)
+  const tier = currentUser.role === 'sales' ? product.tiers[0] : findTierForCount(product.tiers, numPlacements);
 
   const pricePerPlacement = getPrice(tier, termMonths);
   const totalMonthly = pricePerPlacement * numPlacements;
@@ -1770,11 +1771,9 @@ function initApp() {
   // Pricing calculator: sales reps see 6mo+ only; managers see all
   populateTermDropdown(document.getElementById('calcTerm'), false, false);
 
-  // Regular sales: hide placements input and volume discount card
+  // Regular sales: hide volume discount card (they always use 1-placement tier)
   const isRegularSales = currentUser.role === 'sales';
-  document.getElementById('calcPlacementsGroup').style.display = isRegularSales ? 'none' : 'block';
   document.getElementById('resDiscountCard').style.display = isRegularSales ? 'none' : 'block';
-  if (isRegularSales) document.getElementById('calcPlacements').value = 1;
 
   updateCalculator();
 
