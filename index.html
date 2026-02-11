@@ -1179,6 +1179,10 @@ authSubmit.addEventListener('click', () => {
   switchTab('pricing');
   document.getElementById('exceptionConfirmation').style.display = 'none';
   document.getElementById('slackMessage').textContent = '';
+  document.getElementById('reviewActionPanel').style.display = 'none';
+  document.getElementById('reviewResult').innerHTML = '';
+  document.getElementById('counterFormPanel').style.display = 'none';
+  selectedReviewId = null;
 
   const isSalesRole = person.role === 'sales' || person.role === 'enterprise';
   document.getElementById('requestTabBtn').style.display = isSalesRole ? 'inline-block' : 'none';
