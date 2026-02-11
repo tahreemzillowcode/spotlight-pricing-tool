@@ -120,6 +120,7 @@ header h1 {
 .role-badge.manager { background: #c9a84c22; color: #c9a84c; border: 1px solid #c9a84c55; }
 .role-badge.admin { background: #a855f722; color: #c084fc; border: 1px solid #a855f755; }
 .role-badge.sales { background: #3b82f622; color: #60a5fa; border: 1px solid #3b82f655; }
+.role-badge.enterprise { background: #14b8a622; color: #2dd4bf; border: 1px solid #14b8a655; }
 .sign-out-btn {
   background: none;
   border: 1px solid #555;
@@ -536,6 +537,7 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
       <option value="admin">Admin</option>
       <option value="manager">Sales Manager</option>
       <option value="sales">Sales Member</option>
+      <option value="enterprise">Enterprise Sales</option>
     </select>
     <div id="authNameDiv" style="display:none;">
       <label for="authWho">Select Your Name</label>
@@ -1005,9 +1007,9 @@ const TEAM = [
   { name: 'Rashaad Cureton',   email: 'rashaadc@zillowgroup.com',   role: 'sales', manager: 'jessicage@zillowgroup.com' },
   { name: 'Solomon Lamar',     email: 'solomonl@zillowgroup.com',   role: 'sales', manager: 'jessicage@zillowgroup.com' },
   // Ken Hoffman's direct reports (Enterprise Sales)
-  { name: 'Richard Phan',      email: 'richardph@zillowgroup.com',  role: 'sales', manager: 'kenh@zillowgroup.com' },
-  { name: 'Edward Cornelius',   email: 'edwardc@zillowgroup.com',   role: 'sales', manager: 'kenh@zillowgroup.com' },
-  { name: 'Eric St. Cashen',    email: 'ericsc@zillowgroup.com',    role: 'sales', manager: 'kenh@zillowgroup.com' }
+  { name: 'Richard Phan',      email: 'richardph@zillowgroup.com',  role: 'enterprise', manager: 'kenh@zillowgroup.com' },
+  { name: 'Edward Cornelius',   email: 'edwardc@zillowgroup.com',   role: 'enterprise', manager: 'kenh@zillowgroup.com' },
+  { name: 'Eric St. Cashen',    email: 'ericsc@zillowgroup.com',    role: 'enterprise', manager: 'kenh@zillowgroup.com' }
 ];
 
 // =============================================
@@ -1045,7 +1047,11 @@ function isPrivileged() {
 }
 
 function isEnterprise() {
-  return currentUser.role === 'sales' && currentUser.manager === 'kenh@zillowgroup.com';
+  return currentUser.role === 'enterprise';
+}
+
+function isSalesOrEnterprise() {
+  return currentUser.role === 'sales' || currentUser.role === 'enterprise';
 }
 
 function getTermLabel(t) {
@@ -1158,13 +1164,14 @@ authSubmit.addEventListener('click', () => {
   document.getElementById('app').classList.add('visible');
   document.getElementById('dispName').textContent = currentUser.name;
   const badge = document.getElementById('dispRole');
-  const roleLabels = { admin: 'Admin', manager: 'Manager', sales: 'Sales' };
+  const roleLabels = { admin: 'Admin', manager: 'Manager', sales: 'Sales', enterprise: 'Enterprise' };
   badge.textContent = roleLabels[person.role];
   badge.className = 'role-badge ' + person.role;
 
   // Show/hide tabs based on role
-  document.getElementById('requestTabBtn').style.display = person.role === 'sales' ? 'inline-block' : 'none';
-  document.getElementById('requestFormSection').style.display = person.role === 'sales' ? 'block' : 'none';
+  const isSalesRole = person.role === 'sales' || person.role === 'enterprise';
+  document.getElementById('requestTabBtn').style.display = isSalesRole ? 'inline-block' : 'none';
+  document.getElementById('requestFormSection').style.display = isSalesRole ? 'block' : 'none';
   document.getElementById('reviewTabBtn').style.display = isPrivileged() ? 'inline-block' : 'none';
   document.getElementById('adminTabBtn').style.display = person.role === 'admin' ? 'inline-block' : 'none';
 
@@ -1447,7 +1454,7 @@ function renderMyRequests() {
 
   const log = getExceptionLog();
   // Sales reps see only their own; managers/admins see all
-  const filtered = currentUser.role === 'sales'
+  const filtered = isSalesOrEnterprise()
     ? log.filter(e => e.rep === currentUser.email)
     : log;
 
@@ -1752,8 +1759,8 @@ function initApp() {
 
   updateCalculator();
 
-  // Request form only for sales reps
-  if (currentUser.role === 'sales') {
+  // Request form only for sales/enterprise reps
+  if (isSalesOrEnterprise()) {
     populateTermDropdown(document.getElementById('reqTerm'), true, true);
     updateRequestSummary();
     ['reqClient', 'reqSfLink', 'reqManager', 'reqProduct', 'reqTerm', 'reqPlacements', 'reqCustomPrice', 'reqNotes'].forEach(id => {
@@ -1798,7 +1805,7 @@ function initAdminDashboard() {
   // Populate sales rep dropdown
   const logRep = document.getElementById('logRep');
   logRep.innerHTML = '';
-  TEAM.filter(t => t.role === 'sales').sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+  TEAM.filter(t => t.role === 'sales' || t.role === 'enterprise').sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
     const o = document.createElement('option');
     o.value = p.email;
     o.textContent = p.name;
