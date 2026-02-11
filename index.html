@@ -1176,6 +1176,9 @@ authSubmit.addEventListener('click', () => {
   badge.className = 'role-badge ' + person.role;
 
   // Show/hide tabs based on role
+  // Reset to default tab on login
+  switchTab('pricing');
+
   const isSalesRole = person.role === 'sales' || person.role === 'enterprise';
   document.getElementById('requestTabBtn').style.display = isSalesRole ? 'inline-block' : 'none';
   document.getElementById('requestFormSection').style.display = isSalesRole ? 'block' : 'none';
