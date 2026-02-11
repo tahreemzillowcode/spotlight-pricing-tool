@@ -1797,7 +1797,7 @@ function initApp() {
 
   // Request form only for sales/enterprise reps
   if (isSalesOrEnterprise()) {
-    populateTermDropdown(document.getElementById('reqTerm'), true, true);
+    populateTermDropdown(document.getElementById('reqTerm'), false, true);
     updateRequestSummary();
     ['reqClient', 'reqSfLink', 'reqManager', 'reqProduct', 'reqTerm', 'reqPlacements', 'reqCustomPrice', 'reqNotes'].forEach(id => {
       const el = document.getElementById(id);
