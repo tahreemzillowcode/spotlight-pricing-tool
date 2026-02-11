@@ -1175,9 +1175,10 @@ authSubmit.addEventListener('click', () => {
   badge.textContent = roleLabels[person.role];
   badge.className = 'role-badge ' + person.role;
 
-  // Show/hide tabs based on role
-  // Reset to default tab on login
+  // Reset UI state from previous session
   switchTab('pricing');
+  document.getElementById('exceptionConfirmation').style.display = 'none';
+  document.getElementById('slackMessage').textContent = '';
 
   const isSalesRole = person.role === 'sales' || person.role === 'enterprise';
   document.getElementById('requestTabBtn').style.display = isSalesRole ? 'inline-block' : 'none';
