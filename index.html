@@ -672,37 +672,23 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
         </div>
 
         <div class="btn-group">
-          <button class="btn btn-gold" id="generateEmailBtn" onclick="generateEmail()">Generate Exception Request Email</button>
+          <button class="btn btn-gold" id="submitExceptionBtn" onclick="submitException()">Submit Exception Request</button>
         </div>
 
-        <div id="emailOutput" style="display:none; margin-top:20px;">
-          <div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <span style="font-size:12px; color:#999; text-transform:uppercase;">To</span>
-              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailTo')">Copy</button>
+        <div id="exceptionConfirmation" style="display:none; margin-top:20px;">
+          <div style="background:#0f1729; border:1px solid #c9a84c33; border-radius:10px; padding:24px;">
+            <div style="text-align:center; margin-bottom:16px;">
+              <span style="font-size:28px;">&#10003;</span>
+              <h3 style="color:#c9a84c; margin-top:8px;">Your exception request has been submitted</h3>
+              <p style="color:#aaa; font-size:14px; margin-top:8px;">Slack your manager to let them know</p>
             </div>
-            <div id="emailTo" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <span style="font-size:12px; color:#999; text-transform:uppercase;">CC</span>
-              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailCc')">Copy</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:12px; color:#999; text-transform:uppercase;">Slack Message</span>
+              <button class="btn btn-gold btn-sm" style="padding:6px 14px; font-size:12px;" onclick="copySlackMessage()">Copy Slack Message</button>
             </div>
-            <div id="emailCc" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <span style="font-size:12px; color:#999; text-transform:uppercase;">Subject</span>
-              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailSubject')">Copy</button>
-            </div>
-            <div id="emailSubject" style="color:#e0e0e0; font-size:14px; margin-bottom:16px; padding:8px 12px; background:#16213e; border-radius:6px; user-select:all;"></div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <span style="font-size:12px; color:#999; text-transform:uppercase;">Body</span>
-              <button class="btn btn-outline btn-sm" style="padding:4px 10px; font-size:11px;" onclick="copyField('emailBody')">Copy</button>
-            </div>
-            <pre id="emailBody" style="color:#e0e0e0; font-size:13px; padding:12px; background:#16213e; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; user-select:all; font-family:inherit; line-height:1.6;"></pre>
-
-            <div style="margin-top:16px;">
-              <button class="btn btn-gold" onclick="copyAll()">Copy All to Clipboard</button>
+            <pre id="slackMessage" style="color:#e0e0e0; font-size:13px; padding:14px; background:#16213e; border-radius:6px; white-space:pre-wrap; word-wrap:break-word; user-select:all; font-family:inherit; line-height:1.6;"></pre>
+            <div style="text-align:center; margin-top:16px;">
+              <button class="btn btn-outline" onclick="dismissConfirmation()">Dismiss</button>
             </div>
           </div>
         </div>
@@ -938,10 +924,6 @@ const PM_EMAIL = 'tahreemz@zillowgroup.com';
 const SALES_DIRECTOR_EMAIL = 'kenh@zillowgroup.com';
 const MANAGER_PASSCODE = 'spotlight2024';
 
-// Slack incoming webhook URL for the managers/admins channel
-// To set up: Slack > Apps > Incoming Webhooks > Add to channel > copy URL
-const SLACK_WEBHOOK_URL = 'https://script.google.com/a/macros/zillowgroup.com/s/AKfycbzBrdGpKeZg84xXtyGLu1vZVBeUQ-vVPPIVJfR1xkEbHR8h8nbkpsfEITKI2TDpK2w/exec';
-
 // Link to the pricing tool for reviewers
 const TOOL_URL = 'https://tahreemzillowcode.github.io/spotlight-pricing-tool/';
 
@@ -967,7 +949,19 @@ const TEAM = [
   { name: 'Sam Stein',          email: 'samst@zillowgroup.com',      role: 'sales', manager: 'ryandan@zillowgroup.com' },
   { name: 'Shadi Alramli',      email: 'shadia@zillowgroup.com',     role: 'sales', manager: 'ryandan@zillowgroup.com' },
   { name: 'Tanner Leon',        email: 'tannerl@zillowgroup.com',    role: 'sales', manager: 'ryandan@zillowgroup.com' },
-  { name: 'Tyler Paul Gilmore', email: 'tylerpaulg@zillowgroup.com', role: 'sales', manager: 'ryandan@zillowgroup.com' }
+  { name: 'Tyler Paul Gilmore', email: 'tylerpaulg@zillowgroup.com', role: 'sales', manager: 'ryandan@zillowgroup.com' },
+  // Jessica Gendreau's team
+  { name: 'Jessica Gendreau',  email: 'jessicage@zillowgroup.com',  role: 'manager', manager: null },
+  { name: 'Alexandra Wiley',   email: 'alexandrawi@zillowgroup.com', role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Ben Van Ornum',     email: 'benjaminva@zillowgroup.com', role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Carlos Fis',        email: 'carlosf@zillowgroup.com',    role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Dilek Kanmaz',      email: 'dilekk@zillowgroup.com',     role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Gianni Borges',     email: 'giannib@zillowgroup.com',    role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Joe Sanchez',       email: 'joesa@zillowgroup.com',      role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Judie Main',        email: 'judiem@zillowgroup.com',     role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Madi Cox',          email: 'madic@zillowgroup.com',      role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Rashaad Cureton',   email: 'rashaadc@zillowgroup.com',   role: 'sales', manager: 'jessicage@zillowgroup.com' },
+  { name: 'Solomon Lamar',     email: 'solomonl@zillowgroup.com',   role: 'sales', manager: 'jessicage@zillowgroup.com' }
 ];
 
 // =============================================
@@ -1303,7 +1297,7 @@ function dealRow(label, value) {
   return '<div class="deal-row"><span class="dl">' + label + '</span><span class="dv">' + value + '</span></div>';
 }
 
-function generateEmail() {
+function submitException() {
   const client = document.getElementById('reqClient').value.trim();
   const sfLink = document.getElementById('reqSfLink').value.trim();
   const productKey = document.getElementById('reqProduct').value;
@@ -1317,45 +1311,11 @@ function generateEmail() {
   const notes = document.getElementById('reqNotes').value.trim();
   const totalMonthly = priceUsed * numPlacements;
   const totalTerm = totalMonthly * termMonths;
-  const isShortTerm = termMonths < 6;
 
   if (!client) {
     alert('Please enter a client name.');
     return;
   }
-
-  const managerEmail = document.getElementById('reqManager').value.trim();
-  const cc = [PM_EMAIL, SALES_DIRECTOR_EMAIL].filter(Boolean).join('; ');
-  const subject = 'Pricing Exception Request: ' + client + ' - ' + product.name + ' - ' + numPlacements + ' placements';
-
-  let body = 'Hi,\n\n';
-  body += currentUser.name + ' has submitted a pricing exception request. Please review the details below.\n\n';
-  body += '--- DEAL DETAILS ---\n';
-  body += 'Client: ' + client + '\n';
-  if (sfLink) body += 'Salesforce Account: ' + sfLink + '\n';
-  body += 'Sales Rep: ' + currentUser.name + ' (' + currentUser.email + ')\n';
-  body += 'Product: ' + product.name + '\n';
-  body += 'Term: ' + termMonths + ' months' + (isShortTerm ? ' (short term - requires approval)' : '') + '\n';
-  body += 'Placements: ' + numPlacements + '\n';
-  body += 'Ratecard Price/Placement: ' + fmt(ratecardPrice) + '\n';
-  body += 'Requested Price/Placement: ' + fmt(priceUsed) + '\n';
-  if (priceUsed !== ratecardPrice) {
-    const diff = ((priceUsed - ratecardPrice) / ratecardPrice * 100).toFixed(1);
-    body += 'Difference vs Ratecard: ' + diff + '%\n';
-  }
-  body += 'Total Monthly: ' + fmt(totalMonthly) + '\n';
-  body += 'Total (' + termMonths + ' mo): ' + fmt(totalTerm) + '\n';
-  body += 'Volume Discount Tier: ' + tier.discount + '%\n';
-  if (notes) body += '\nBusiness Case: ' + notes + '\n';
-  body += '\n--- END ---\n\n';
-  body += 'Review in Pricing Tool: ' + TOOL_URL + '\n\n';
-  body += 'Thank you,\n' + currentUser.name;
-
-  document.getElementById('emailTo').textContent = managerEmail;
-  document.getElementById('emailCc').textContent = cc;
-  document.getElementById('emailSubject').textContent = subject;
-  document.getElementById('emailBody').textContent = body;
-  document.getElementById('emailOutput').style.display = 'block';
 
   // Save to exception log as pending
   const log = getExceptionLog();
@@ -1379,6 +1339,23 @@ function generateEmail() {
   });
   saveExceptionLog(log);
 
+  // Build Slack message
+  const managerEmail = document.getElementById('reqManager').value.trim();
+  const managerPerson = TEAM.find(t => t.email === managerEmail);
+  const managerFirst = managerPerson ? managerPerson.name.split(' ')[0] : 'Manager';
+
+  let msg = 'Hi ' + managerFirst + ", I've submitted a pricing exception request for " + client + ':\n';
+  msg += '\u2022 Product: ' + product.name + '\n';
+  msg += '\u2022 Term: ' + termMonths + ' months\n';
+  msg += '\u2022 Placements: ' + numPlacements + '\n';
+  msg += '\u2022 Ratecard: ' + fmt(ratecardPrice) + ' \u2192 Requested: ' + fmt(priceUsed) + '\n';
+  msg += '\u2022 Total: ' + fmt(totalMonthly) + ' /mo (' + fmt(totalTerm) + ' over ' + termMonths + ' mo)\n';
+  if (notes) msg += '\u2022 Business Case: ' + notes + '\n';
+  msg += 'Please review in the Pricing Tool: ' + TOOL_URL;
+
+  document.getElementById('slackMessage').textContent = msg;
+  document.getElementById('exceptionConfirmation').style.display = 'block';
+
   // Reset form for new request
   document.getElementById('reqClient').value = '';
   document.getElementById('reqSfLink').value = '';
@@ -1400,17 +1377,17 @@ function copyField(id) {
   });
 }
 
-function copyAll() {
-  const to = document.getElementById('emailTo').textContent;
-  const cc = document.getElementById('emailCc').textContent;
-  const subject = document.getElementById('emailSubject').textContent;
-  const body = document.getElementById('emailBody').textContent;
-  const all = 'To: ' + to + '\nCC: ' + cc + '\nSubject: ' + subject + '\n\n' + body;
-  navigator.clipboard.writeText(all).then(() => {
+function copySlackMessage() {
+  const text = document.getElementById('slackMessage').textContent;
+  navigator.clipboard.writeText(text).then(() => {
     const btn = event.target;
     btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = 'Copy All to Clipboard'; }, 2000);
+    setTimeout(() => { btn.textContent = 'Copy Slack Message'; }, 2000);
   });
+}
+
+function dismissConfirmation() {
+  document.getElementById('exceptionConfirmation').style.display = 'none';
 }
 
 // =============================================
