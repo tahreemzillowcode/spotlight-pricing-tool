@@ -864,8 +864,12 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
           <div class="stat-label">Countered</div>
         </div>
         <div class="stat-card">
+          <div class="stat-value" id="statTotalRequested">$0</div>
+          <div class="stat-label">Total $ Requested</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-value" id="statDiscountTotal">$0</div>
-          <div class="stat-label">Total $ in Approved Discounts</div>
+          <div class="stat-label">Total $ in Approved/Countered Discounts</div>
         </div>
       </div>
 
@@ -1990,11 +1994,23 @@ function renderAdminDashboard() {
   const pending = filtered.filter(e => e.status === 'pending').length;
   const countered = filtered.filter(e => e.status === 'countered').length;
 
-  // Total $ in approved discounts = sum of (ratecard - requested) * placements * term for approved entries
+  // Total $ requested = sum of requested * placements * term for all entries
+  let totalRequested = 0;
+  filtered.forEach(e => {
+    totalRequested += e.requested * e.placements * e.term;
+  });
+
+  // Total $ in approved/countered discounts
+  // Approved: discount = (ratecard - requested) * placements * term
+  // Countered: discount = (ratecard - counterPrice) * counterPlacements * counterTerm
   let totalDiscount = 0;
   filtered.filter(e => e.status === 'approved').forEach(e => {
     const diff = (e.ratecard - e.requested);
     if (diff > 0) totalDiscount += diff * e.placements * e.term;
+  });
+  filtered.filter(e => e.status === 'countered').forEach(e => {
+    const diff = (e.ratecard - (e.counterPrice || e.requested));
+    if (diff > 0) totalDiscount += diff * (e.counterPlacements || e.placements) * (e.counterTerm || e.term);
   });
 
   document.getElementById('statRequested').textContent = requested;
@@ -2002,6 +2018,7 @@ function renderAdminDashboard() {
   document.getElementById('statDeclined').textContent = declined;
   document.getElementById('statPending').textContent = pending;
   document.getElementById('statCountered').textContent = countered;
+  document.getElementById('statTotalRequested').textContent = fmt(totalRequested);
   document.getElementById('statDiscountTotal').textContent = fmt(totalDiscount);
 
   // Table
