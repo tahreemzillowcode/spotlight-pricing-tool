@@ -23,7 +23,7 @@ This is your default view after signing in. Use it to quickly look up Spotlight 
 
 ### What you'll see
 - **Product Type** — Toggle between **Add-On Spotlight** and **Standalone Spotlight**.
-- **Term Length** — Choose from 6, 9, or 12 month terms.
+- **Term Length** — Choose from 3, 6, 9, or 12 month terms.
 - **Number of Placements** — Enter how many placements the client needs.
 - **Price / Placement** — The monthly rate per placement at the standard ratecard price.
 - **Total Monthly Cost** — Price per placement multiplied by the number of placements.
@@ -58,7 +58,7 @@ If a client needs pricing below the standard ratecard, you can submit a pricing 
 | **Salesforce Account Link** | Paste the Salesforce URL for this account |
 | **Approver** | Auto-filled with your manager's email (not editable) |
 | **Product** | Add-On Spotlight or Standalone Spotlight |
-| **Term Length** | 6, 9, or 12 months |
+| **Term Length** | 3, 6, 9, or 12 months |
 | **Number of Placements** | How many placements the client wants |
 | **Requested Price / Placement** | The price you're proposing (leave blank to use the ratecard price) |
 | **Business Case** | Explain *why* this exception should be approved — be specific |

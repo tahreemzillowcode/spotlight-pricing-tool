@@ -1102,7 +1102,7 @@ const PRODUCTS = {
 };
 
 // Terms visible by role
-const SALES_TERMS = [6, 9, 12];
+const SALES_TERMS = [3, 6, 9, 12];
 const ENTERPRISE_TERMS = [3, 6, 9, 12];
 const ALL_TERMS = [1, 3, 6, 9, 12];
 
@@ -1316,7 +1316,7 @@ function buildRatecardTable(productKey, selectedTerm, selectedTierPlacements) {
   const product = PRODUCTS[productKey];
   const terms = getAvailableTerms();
   const isRegularSales = currentUser.role === 'sales';
-  const tiers = isRegularSales ? [product.tiers[0]] : product.tiers;
+  const tiers = isRegularSales ? [product.tiers[0], product.tiers[1]] : product.tiers;
 
   document.getElementById('tableTitle').textContent = product.name + ' — ' + (isRegularSales ? 'Ratecard' : 'Full Ratecard');
 
@@ -1329,7 +1329,8 @@ function buildRatecardTable(productKey, selectedTerm, selectedTierPlacements) {
 
   tiers.forEach((tier, i) => {
     const isHighlighted = tier.placements === selectedTierPlacements;
-    const rangeLabel = isRegularSales ? '1' : getTierRangeLabel(product.tiers, i);
+    const originalIndex = product.tiers.indexOf(tier);
+    const rangeLabel = getTierRangeLabel(product.tiers, originalIndex);
     html += '<tr class="' + (isHighlighted ? 'highlighted' : '') + '">';
     html += '<td>' + rangeLabel + '</td>';
     terms.forEach(t => {
