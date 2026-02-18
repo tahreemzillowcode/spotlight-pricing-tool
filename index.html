@@ -945,6 +945,24 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
       </div>
 
       <div class="admin-section">
+        <h3>Data Management</h3>
+        <div style="background:#1a2332; padding:20px; border-radius:8px; border:1px solid #c9a84c33;">
+          <div style="margin-bottom:16px;">
+            <label style="display:block; margin-bottom:8px; color:#c9a84c; font-weight:600;">Delete Historical Exceptions</label>
+            <p style="color:#999; font-size:13px; margin-bottom:12px;">Remove all exception requests before a specific date. This action cannot be undone.</p>
+          </div>
+          <div style="display:flex; gap:12px; align-items:end;">
+            <div style="flex:1;">
+              <label style="display:block; margin-bottom:4px; font-size:13px;">Delete requests before:</label>
+              <input type="date" id="cleanupDate" style="width:100%; padding:10px; background:#0f1729; border:1px solid #c9a84c33; color:#fff; border-radius:4px;">
+            </div>
+            <button class="btn btn-sm" onclick="deleteHistoricalExceptions()" style="background:#d9534f; border-color:#d9534f; padding:10px 20px;">Delete History</button>
+          </div>
+          <div id="cleanupMessage" style="margin-top:12px; padding:10px; border-radius:4px; display:none;"></div>
+        </div>
+      </div>
+
+      <div class="admin-section">
         <h3>Exception Request Log</h3>
         <div style="overflow-x:auto;">
           <table class="admin-table" id="adminLogTable">
@@ -2098,6 +2116,58 @@ function renderAdminDashboard() {
       '<td><button class="delete-btn" onclick="deleteLogEntry(' + e.id + ')" title="Delete">&#10005;</button></td>' +
     '</tr>';
   }).join('');
+}
+
+// =============================================
+// DATA CLEANUP
+// =============================================
+function deleteHistoricalExceptions() {
+  const cutoffDate = document.getElementById('cleanupDate').value;
+  const messageDiv = document.getElementById('cleanupMessage');
+
+  if (!cutoffDate) {
+    messageDiv.style.display = 'block';
+    messageDiv.style.background = '#d9534f33';
+    messageDiv.style.border = '1px solid #d9534f';
+    messageDiv.style.color = '#d9534f';
+    messageDiv.textContent = '⚠️ Please select a date';
+    return;
+  }
+
+  const confirmMsg = `Are you sure you want to delete all exception requests before ${cutoffDate}?\n\nThis action cannot be undone.`;
+  if (!confirm(confirmMsg)) {
+    return;
+  }
+
+  try {
+    const log = getExceptionLog();
+    const beforeCount = log.length;
+    const filteredLog = log.filter(entry => entry.date >= cutoffDate);
+    const deletedCount = beforeCount - filteredLog.length;
+
+    saveExceptionLog(filteredLog);
+
+    messageDiv.style.display = 'block';
+    messageDiv.style.background = '#5cb85c33';
+    messageDiv.style.border = '1px solid #5cb85c';
+    messageDiv.style.color = '#5cb85c';
+    messageDiv.textContent = `✅ Successfully deleted ${deletedCount} exception request(s). Kept ${filteredLog.length} from ${cutoffDate} onwards.`;
+
+    // Refresh the dashboard to show updated data
+    renderAdminDashboard();
+
+    // Hide message after 5 seconds
+    setTimeout(() => {
+      messageDiv.style.display = 'none';
+    }, 5000);
+
+  } catch(e) {
+    messageDiv.style.display = 'block';
+    messageDiv.style.background = '#d9534f33';
+    messageDiv.style.border = '1px solid #d9534f';
+    messageDiv.style.color = '#d9534f';
+    messageDiv.textContent = '❌ Error deleting exceptions: ' + e.message;
+  }
 }
 </script>
 </body>
