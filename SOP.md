@@ -23,7 +23,7 @@ This is your default view after signing in. Use it to quickly look up Spotlight 
 
 ### What you'll see
 - **Product Type** — Toggle between **Add-On Spotlight** and **Standalone Spotlight**.
-- **Term Length** — Choose from 3, 6, 9, or 12 month terms.
+- **Term Length** — Choose from 6, 9, or 12 month terms. (3-month terms are available via exception request only.)
 - **Number of Placements** — Enter how many placements the client needs.
 - **Price / Placement** — The monthly rate per placement at the standard ratecard price.
 - **Total Monthly Cost** — Price per placement multiplied by the number of placements.

@@ -1129,10 +1129,14 @@ const PRODUCTS = {
   }
 };
 
-// Terms visible by role
-const SALES_TERMS = [3, 6, 9, 12];
+// Terms visible by role (for rate card display)
+const SALES_TERMS = [6, 9, 12];
 const ENTERPRISE_TERMS = [3, 6, 9, 12];
 const ALL_TERMS = [1, 3, 6, 9, 12];
+
+// Terms available for exception requests
+const SALES_EXCEPTION_TERMS = [3, 6, 9, 12];
+const ENTERPRISE_EXCEPTION_TERMS = [3, 6, 9, 12];
 
 // =============================================
 // STATE
@@ -1291,11 +1295,24 @@ function getAvailableTerms() {
   return SALES_TERMS;
 }
 
+function getAvailableExceptionTerms() {
+  if (isPrivileged()) return ALL_TERMS;
+  if (isEnterprise()) return ENTERPRISE_EXCEPTION_TERMS;
+  return SALES_EXCEPTION_TERMS;
+}
+
 // =============================================
 // POPULATE DROPDOWNS
 // =============================================
-function populateTermDropdown(selectEl, includeAllTerms, usePlainLabels) {
-  const terms = includeAllTerms ? ALL_TERMS : getAvailableTerms();
+function populateTermDropdown(selectEl, includeAllTerms, usePlainLabels, isExceptionRequest = false) {
+  let terms;
+  if (includeAllTerms) {
+    terms = ALL_TERMS;
+  } else if (isExceptionRequest) {
+    terms = getAvailableExceptionTerms();
+  } else {
+    terms = getAvailableTerms();
+  }
   selectEl.innerHTML = '';
   terms.forEach(t => {
     const opt = document.createElement('option');
@@ -1826,7 +1843,7 @@ function initApp() {
 
   // Request form only for sales/enterprise reps
   if (isSalesOrEnterprise()) {
-    populateTermDropdown(document.getElementById('reqTerm'), false, true);
+    populateTermDropdown(document.getElementById('reqTerm'), false, true, true);
     updateRequestSummary();
     ['reqClient', 'reqSfLink', 'reqManager', 'reqProduct', 'reqTerm', 'reqPlacements', 'reqCustomPrice', 'reqNotes'].forEach(id => {
       const el = document.getElementById(id);
