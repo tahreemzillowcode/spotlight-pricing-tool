@@ -948,15 +948,15 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
         <h3>Data Management</h3>
         <div style="background:#1a2332; padding:20px; border-radius:8px; border:1px solid #c9a84c33;">
           <div style="margin-bottom:16px;">
-            <label style="display:block; margin-bottom:8px; color:#c9a84c; font-weight:600;">Delete Historical Exceptions</label>
-            <p style="color:#999; font-size:13px; margin-bottom:12px;">Remove all exception requests before a specific date. This action cannot be undone.</p>
+            <label style="display:block; margin-bottom:8px; color:#c9a84c; font-weight:600;">Mark Test Data</label>
+            <p style="color:#999; font-size:13px; margin-bottom:12px;">Mark all exception requests before a specific date as test data. Test requests are excluded from dashboard statistics.</p>
           </div>
           <div style="display:flex; gap:12px; align-items:end;">
             <div style="flex:1;">
-              <label style="display:block; margin-bottom:4px; font-size:13px;">Delete requests before:</label>
+              <label style="display:block; margin-bottom:4px; font-size:13px;">Mark as test before:</label>
               <input type="date" id="cleanupDate" style="width:100%; padding:10px; background:#0f1729; border:1px solid #c9a84c33; color:#fff; border-radius:4px;">
             </div>
-            <button class="btn btn-sm" onclick="deleteHistoricalExceptions()" style="background:#d9534f; border-color:#d9534f; padding:10px 20px;">Delete History</button>
+            <button class="btn btn-sm" onclick="markTestData()" style="background:#f0ad4e; border-color:#f0ad4e; padding:10px 20px;">Mark as Test</button>
           </div>
           <div id="cleanupMessage" style="margin-top:12px; padding:10px; border-radius:4px; display:none;"></div>
         </div>
@@ -1853,6 +1853,7 @@ function initApp() {
 // ADMIN DASHBOARD (localStorage-based)
 // =============================================
 const STORAGE_KEY = 'spotlight_exception_log';
+const TEST_DATA_MIGRATION_KEY = 'test_data_migration_v1';
 
 function getExceptionLog() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
@@ -1862,6 +1863,38 @@ function getExceptionLog() {
 function saveExceptionLog(log) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(log));
 }
+
+// One-time migration: Mark all data before 2026-02-17 as test data
+(function migrateTestData() {
+  // Check if migration already ran
+  if (localStorage.getItem(TEST_DATA_MIGRATION_KEY)) {
+    return;
+  }
+
+  try {
+    const log = getExceptionLog();
+    const cutoffDate = '2026-02-17';
+    let markedCount = 0;
+
+    const updatedLog = log.map(entry => {
+      if (entry.date < cutoffDate && !entry.isTest) {
+        markedCount++;
+        return { ...entry, isTest: true };
+      }
+      return entry;
+    });
+
+    if (markedCount > 0) {
+      saveExceptionLog(updatedLog);
+      console.log(`Auto-marked ${markedCount} exception(s) before ${cutoffDate} as test data`);
+    }
+
+    // Mark migration as complete
+    localStorage.setItem(TEST_DATA_MIGRATION_KEY, 'true');
+  } catch(e) {
+    console.error('Error during test data migration:', e);
+  }
+})();
 
 function initAdminDashboard() {
   // Set default date to today
@@ -2046,28 +2079,31 @@ function renderAdminDashboard() {
   const filter = document.getElementById('adminMonthFilter').value;
   const filtered = filter === 'all' ? log : log.filter(e => e.date && e.date.startsWith(filter));
 
-  // Stats
-  const requested = filtered.length;
-  const approved = filtered.filter(e => e.status === 'approved').length;
-  const declined = filtered.filter(e => e.status === 'declined').length;
-  const pending = filtered.filter(e => e.status === 'pending').length;
-  const countered = filtered.filter(e => e.status === 'countered').length;
+  // Exclude test data from statistics
+  const nonTestData = filtered.filter(e => !e.isTest);
 
-  // Total $ requested = sum of requested * placements * term for all entries
+  // Stats (only count non-test data)
+  const requested = nonTestData.length;
+  const approved = nonTestData.filter(e => e.status === 'approved').length;
+  const declined = nonTestData.filter(e => e.status === 'declined').length;
+  const pending = nonTestData.filter(e => e.status === 'pending').length;
+  const countered = nonTestData.filter(e => e.status === 'countered').length;
+
+  // Total $ requested = sum of requested * placements * term for non-test entries only
   let totalRequested = 0;
-  filtered.forEach(e => {
+  nonTestData.forEach(e => {
     totalRequested += e.requested * e.placements * e.term;
   });
 
-  // Total $ in approved/countered discounts
+  // Total $ in approved/countered discounts (non-test only)
   // Approved: discount = (ratecard - requested) * placements * term
   // Countered: discount = (ratecard - counterPrice) * counterPlacements * counterTerm
   let totalDiscount = 0;
-  filtered.filter(e => e.status === 'approved').forEach(e => {
+  nonTestData.filter(e => e.status === 'approved').forEach(e => {
     const diff = (e.ratecard - e.requested);
     if (diff > 0) totalDiscount += diff * e.placements * e.term;
   });
-  filtered.filter(e => e.status === 'countered').forEach(e => {
+  nonTestData.filter(e => e.status === 'countered').forEach(e => {
     const diff = (e.ratecard - (e.counterPrice || e.requested));
     if (diff > 0) totalDiscount += diff * (e.counterPlacements || e.placements) * (e.counterTerm || e.term);
   });
@@ -2095,8 +2131,11 @@ function renderAdminDashboard() {
 
   tbody.innerHTML = filtered.sort((a, b) => b.date.localeCompare(a.date)).map(e => {
     const diff = (e.ratecard - e.requested) * e.placements * e.term;
-    return '<tr>' +
-      '<td>' + e.date + '</td>' +
+    const isTest = e.isTest;
+    const testStyle = isTest ? 'opacity:0.4;' : '';
+    const testLabel = isTest ? ' <span style="background:#666;color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;">TEST</span>' : '';
+    return '<tr style="' + testStyle + '">' +
+      '<td>' + e.date + testLabel + '</td>' +
       '<td>' + (e.repName || e.rep) + '</td>' +
       '<td>' + e.client + '</td>' +
       '<td>' + (productNames[e.product] || e.product) + '</td>' +
@@ -2119,9 +2158,9 @@ function renderAdminDashboard() {
 }
 
 // =============================================
-// DATA CLEANUP
+// DATA MANAGEMENT
 // =============================================
-function deleteHistoricalExceptions() {
+function markTestData() {
   const cutoffDate = document.getElementById('cleanupDate').value;
   const messageDiv = document.getElementById('cleanupMessage');
 
@@ -2134,24 +2173,31 @@ function deleteHistoricalExceptions() {
     return;
   }
 
-  const confirmMsg = `Are you sure you want to delete all exception requests before ${cutoffDate}?\n\nThis action cannot be undone.`;
+  const confirmMsg = `Mark all exception requests before ${cutoffDate} as test data?\n\nTest requests will be excluded from dashboard statistics.`;
   if (!confirm(confirmMsg)) {
     return;
   }
 
   try {
     const log = getExceptionLog();
-    const beforeCount = log.length;
-    const filteredLog = log.filter(entry => entry.date >= cutoffDate);
-    const deletedCount = beforeCount - filteredLog.length;
+    let markedCount = 0;
 
-    saveExceptionLog(filteredLog);
+    // Mark entries before cutoff date as test data
+    const updatedLog = log.map(entry => {
+      if (entry.date < cutoffDate && !entry.isTest) {
+        markedCount++;
+        return { ...entry, isTest: true };
+      }
+      return entry;
+    });
+
+    saveExceptionLog(updatedLog);
 
     messageDiv.style.display = 'block';
     messageDiv.style.background = '#5cb85c33';
     messageDiv.style.border = '1px solid #5cb85c';
     messageDiv.style.color = '#5cb85c';
-    messageDiv.textContent = `✅ Successfully deleted ${deletedCount} exception request(s). Kept ${filteredLog.length} from ${cutoffDate} onwards.`;
+    messageDiv.textContent = `✅ Successfully marked ${markedCount} exception request(s) as test data. They will be excluded from statistics.`;
 
     // Refresh the dashboard to show updated data
     renderAdminDashboard();
@@ -2166,7 +2212,7 @@ function deleteHistoricalExceptions() {
     messageDiv.style.background = '#d9534f33';
     messageDiv.style.border = '1px solid #d9534f';
     messageDiv.style.color = '#d9534f';
-    messageDiv.textContent = '❌ Error deleting exceptions: ' + e.message;
+    messageDiv.textContent = '❌ Error marking test data: ' + e.message;
   }
 }
 </script>
